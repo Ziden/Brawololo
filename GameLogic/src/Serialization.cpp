@@ -6,17 +6,10 @@ namespace game {
 namespace {
 
 constexpr std::size_t kMinSerializedEntityBytes =
-    sizeof(std::uint32_t) +
-    (sizeof(Fixed) * 4U) +
-    (sizeof(std::int16_t) * 2U) +
-    sizeof(std::uint8_t) +
-    sizeof(std::uint32_t) +
-    sizeof(ClientId) +
-    (sizeof(std::uint8_t) * 2U);
+    sizeof(std::uint32_t) + (sizeof(Fixed) * 4U) + (sizeof(std::int16_t) * 2U) +
+    sizeof(std::uint8_t) + sizeof(std::uint32_t) + sizeof(ClientId) + (sizeof(std::uint8_t) * 2U);
 
-template <typename T>
-std::optional<T> FinishDecode(BinaryReader& reader, T value)
-{
+template <typename T> std::optional<T> FinishDecode(BinaryReader& reader, T value) {
     if (!reader.Finish()) {
         return std::nullopt;
     }
@@ -24,42 +17,38 @@ std::optional<T> FinishDecode(BinaryReader& reader, T value)
     return std::move(value);
 }
 
-std::optional<WeaponType> ReadWeaponType(BinaryReader& reader)
-{
-    return reader.ReadEnum<WeaponType>(static_cast<std::underlying_type_t<WeaponType>>(kWeaponTypeCount - 1U));
+std::optional<WeaponType> ReadWeaponType(BinaryReader& reader) {
+    return reader.ReadEnum<WeaponType>(
+        static_cast<std::underlying_type_t<WeaponType>>(kWeaponTypeCount - 1U));
 }
 
-std::optional<ReplicatedEntityKind> ReadReplicatedEntityKind(BinaryReader& reader)
-{
+std::optional<ReplicatedEntityKind> ReadReplicatedEntityKind(BinaryReader& reader) {
     return reader.ReadEnum<ReplicatedEntityKind>(
-        static_cast<std::underlying_type_t<ReplicatedEntityKind>>(ReplicatedEntityKind::Projectile));
+        static_cast<std::underlying_type_t<ReplicatedEntityKind>>(
+            ReplicatedEntityKind::Projectile));
 }
 
-std::optional<SnapshotPriority> ReadSnapshotPriority(BinaryReader& reader)
-{
+std::optional<SnapshotPriority> ReadSnapshotPriority(BinaryReader& reader) {
     return reader.ReadEnum<SnapshotPriority>(
         static_cast<std::underlying_type_t<SnapshotPriority>>(SnapshotPriority::High));
 }
 
-std::optional<SnapshotDeliveryKind> ReadSnapshotDeliveryKind(BinaryReader& reader)
-{
+std::optional<SnapshotDeliveryKind> ReadSnapshotDeliveryKind(BinaryReader& reader) {
     return reader.ReadEnum<SnapshotDeliveryKind>(
-        static_cast<std::underlying_type_t<SnapshotDeliveryKind>>(SnapshotDeliveryKind::DeltaEligible));
+        static_cast<std::underlying_type_t<SnapshotDeliveryKind>>(
+            SnapshotDeliveryKind::DeltaEligible));
 }
 
-std::optional<NetworkEventKind> ReadNetworkEventKind(BinaryReader& reader)
-{
-    return reader.ReadEnum<NetworkEventKind>(
-        static_cast<std::underlying_type_t<NetworkEventKind>>(NetworkEventKind::EntityLeftInterest));
+std::optional<NetworkEventKind> ReadNetworkEventKind(BinaryReader& reader) {
+    return reader.ReadEnum<NetworkEventKind>(static_cast<std::underlying_type_t<NetworkEventKind>>(
+        NetworkEventKind::EntityLeftInterest));
 }
 
-void WriteEntityId(BinaryWriter& writer, NetworkEntityId id)
-{
+void WriteEntityId(BinaryWriter& writer, NetworkEntityId id) {
     writer.WritePod(id.value);
 }
 
-std::optional<NetworkEntityId> ReadEntityId(BinaryReader& reader)
-{
+std::optional<NetworkEntityId> ReadEntityId(BinaryReader& reader) {
     const auto value = reader.ReadPod<std::uint32_t>();
     if (!value.has_value()) {
         return std::nullopt;
@@ -67,8 +56,7 @@ std::optional<NetworkEntityId> ReadEntityId(BinaryReader& reader)
     return NetworkEntityId{*value};
 }
 
-void WriteMovement(BinaryWriter& writer, const MovementStateDTO& movement)
-{
+void WriteMovement(BinaryWriter& writer, const MovementStateDTO& movement) {
     WriteEntityId(writer, movement.entityId);
     writer.WritePod(movement.x);
     writer.WritePod(movement.y);
@@ -78,8 +66,7 @@ void WriteMovement(BinaryWriter& writer, const MovementStateDTO& movement)
     writer.WritePod(movement.aimY);
 }
 
-std::optional<MovementStateDTO> ReadMovement(BinaryReader& reader)
-{
+std::optional<MovementStateDTO> ReadMovement(BinaryReader& reader) {
     MovementStateDTO movement{};
     const auto entityId = ReadEntityId(reader);
     const auto x = reader.ReadPod<Fixed>();
@@ -104,8 +91,7 @@ std::optional<MovementStateDTO> ReadMovement(BinaryReader& reader)
     return movement;
 }
 
-void WriteCombat(BinaryWriter& writer, const CombatStateDTO& combat)
-{
+void WriteCombat(BinaryWriter& writer, const CombatStateDTO& combat) {
     WriteEntityId(writer, combat.entityId);
     writer.WritePod(combat.health);
     writer.WritePod(combat.maxHealth);
@@ -118,8 +104,7 @@ void WriteCombat(BinaryWriter& writer, const CombatStateDTO& combat)
     WriteEntityId(writer, combat.projectileOwnerId);
 }
 
-std::optional<CombatStateDTO> ReadCombat(BinaryReader& reader)
-{
+std::optional<CombatStateDTO> ReadCombat(BinaryReader& reader) {
     CombatStateDTO combat{};
     const auto entityId = ReadEntityId(reader);
     const auto health = reader.ReadPod<std::int32_t>();
@@ -133,9 +118,9 @@ std::optional<CombatStateDTO> ReadCombat(BinaryReader& reader)
     const auto projectileOwnerId = ReadEntityId(reader);
 
     if (!entityId.has_value() || !health.has_value() || !maxHealth.has_value() ||
-        !weaponType.has_value() ||
-        !weaponWarming.has_value() || !weaponWarmupCompletesAtMs.has_value() ||
-        !defeated.has_value() || !respawnAtMs.has_value() || !serverOwnedProjectile.has_value() ||
+        !weaponType.has_value() || !weaponWarming.has_value() ||
+        !weaponWarmupCompletesAtMs.has_value() || !defeated.has_value() ||
+        !respawnAtMs.has_value() || !serverOwnedProjectile.has_value() ||
         !projectileOwnerId.has_value()) {
         return std::nullopt;
     }
@@ -153,24 +138,22 @@ std::optional<CombatStateDTO> ReadCombat(BinaryReader& reader)
     return combat;
 }
 
-void WriteReplication(BinaryWriter& writer, const ReplicationStateDTO& replication)
-{
+void WriteReplication(BinaryWriter& writer, const ReplicationStateDTO& replication) {
     WriteEntityId(writer, replication.entityId);
     writer.WritePod(replication.ownerClientId);
     writer.WritePod(static_cast<std::uint8_t>(replication.kind));
     writer.WritePod(static_cast<std::uint8_t>(replication.priority));
 }
 
-std::optional<ReplicationStateDTO> ReadReplication(BinaryReader& reader)
-{
+std::optional<ReplicationStateDTO> ReadReplication(BinaryReader& reader) {
     ReplicationStateDTO replication{};
     const auto entityId = ReadEntityId(reader);
     const auto ownerClientId = reader.ReadPod<ClientId>();
     const auto kind = ReadReplicatedEntityKind(reader);
     const auto priority = ReadSnapshotPriority(reader);
 
-    if (!entityId.has_value() || !ownerClientId.has_value() ||
-        !kind.has_value() || !priority.has_value()) {
+    if (!entityId.has_value() || !ownerClientId.has_value() || !kind.has_value() ||
+        !priority.has_value()) {
         return std::nullopt;
     }
 
@@ -183,25 +166,19 @@ std::optional<ReplicationStateDTO> ReadReplication(BinaryReader& reader)
 
 } // namespace
 
-const std::vector<std::byte>& BinaryWriter::Bytes() const noexcept
-{
+const std::vector<std::byte>& BinaryWriter::Bytes() const noexcept {
     return bytes_;
 }
 
-BinaryReader::BinaryReader(std::span<const std::byte> bytes)
-    : bytes_(bytes)
-{
-}
+BinaryReader::BinaryReader(std::span<const std::byte> bytes) : bytes_(bytes) {}
 
-std::vector<std::byte> SerializeMovementState(const MovementStateDTO& dto)
-{
+std::vector<std::byte> SerializeMovementState(const MovementStateDTO& dto) {
     BinaryWriter writer{};
     WriteMovement(writer, dto);
     return writer.Bytes();
 }
 
-std::optional<MovementStateDTO> DeserializeMovementState(std::span<const std::byte> bytes)
-{
+std::optional<MovementStateDTO> DeserializeMovementState(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     const auto movement = ReadMovement(reader);
     if (!movement.has_value()) {
@@ -211,8 +188,7 @@ std::optional<MovementStateDTO> DeserializeMovementState(std::span<const std::by
     return FinishDecode(reader, *movement);
 }
 
-std::vector<std::byte> SerializeLoginCommand(const LoginCommand& command)
-{
+std::vector<std::byte> SerializeLoginCommand(const LoginCommand& command) {
     BinaryWriter writer{};
     writer.WritePod(command.header.clientId);
     writer.WritePod(command.header.sequence);
@@ -220,8 +196,7 @@ std::vector<std::byte> SerializeLoginCommand(const LoginCommand& command)
     return writer.Bytes();
 }
 
-std::optional<LoginCommand> DeserializeLoginCommand(std::span<const std::byte> bytes)
-{
+std::optional<LoginCommand> DeserializeLoginCommand(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     LoginCommand command{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -238,8 +213,7 @@ std::optional<LoginCommand> DeserializeLoginCommand(std::span<const std::byte> b
     return FinishDecode(reader, command);
 }
 
-std::vector<std::byte> SerializeClientInputPacket(const ClientInputPacket& packet)
-{
+std::vector<std::byte> SerializeClientInputPacket(const ClientInputPacket& packet) {
     BinaryWriter writer{};
     writer.WritePod(packet.header.clientId);
     writer.WritePod(packet.header.sequence);
@@ -252,8 +226,7 @@ std::vector<std::byte> SerializeClientInputPacket(const ClientInputPacket& packe
     return writer.Bytes();
 }
 
-std::optional<ClientInputPacket> DeserializeClientInputPacket(std::span<const std::byte> bytes)
-{
+std::optional<ClientInputPacket> DeserializeClientInputPacket(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     ClientInputPacket packet{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -266,8 +239,8 @@ std::optional<ClientInputPacket> DeserializeClientInputPacket(std::span<const st
     const auto fire = reader.ReadBool();
 
     if (!clientId.has_value() || !sequence.has_value() || !clientTimestampMs.has_value() ||
-        !moveX.has_value() || !moveY.has_value() || !aimX.has_value() ||
-        !aimY.has_value() || !fire.has_value()) {
+        !moveX.has_value() || !moveY.has_value() || !aimX.has_value() || !aimY.has_value() ||
+        !fire.has_value()) {
         return std::nullopt;
     }
 
@@ -282,8 +255,7 @@ std::optional<ClientInputPacket> DeserializeClientInputPacket(std::span<const st
     return FinishDecode(reader, packet);
 }
 
-std::vector<std::byte> SerializeTimeSyncRequest(const TimeSyncRequest& request)
-{
+std::vector<std::byte> SerializeTimeSyncRequest(const TimeSyncRequest& request) {
     BinaryWriter writer{};
     writer.WritePod(request.clientId);
     writer.WritePod(request.sequence);
@@ -291,8 +263,7 @@ std::vector<std::byte> SerializeTimeSyncRequest(const TimeSyncRequest& request)
     return writer.Bytes();
 }
 
-std::optional<TimeSyncRequest> DeserializeTimeSyncRequest(std::span<const std::byte> bytes)
-{
+std::optional<TimeSyncRequest> DeserializeTimeSyncRequest(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     TimeSyncRequest request{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -309,8 +280,7 @@ std::optional<TimeSyncRequest> DeserializeTimeSyncRequest(std::span<const std::b
     return FinishDecode(reader, request);
 }
 
-std::vector<std::byte> SerializeTimeSyncResponse(const TimeSyncResponse& response)
-{
+std::vector<std::byte> SerializeTimeSyncResponse(const TimeSyncResponse& response) {
     BinaryWriter writer{};
     writer.WritePod(response.clientId);
     writer.WritePod(response.sequence);
@@ -320,8 +290,7 @@ std::vector<std::byte> SerializeTimeSyncResponse(const TimeSyncResponse& respons
     return writer.Bytes();
 }
 
-std::optional<TimeSyncResponse> DeserializeTimeSyncResponse(std::span<const std::byte> bytes)
-{
+std::optional<TimeSyncResponse> DeserializeTimeSyncResponse(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     TimeSyncResponse response{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -343,8 +312,7 @@ std::optional<TimeSyncResponse> DeserializeTimeSyncResponse(std::span<const std:
     return FinishDecode(reader, response);
 }
 
-std::vector<std::byte> SerializeNetworkEvent(const NetworkEventDTO& event)
-{
+std::vector<std::byte> SerializeNetworkEvent(const NetworkEventDTO& event) {
     BinaryWriter writer{};
     writer.WritePod(event.eventId);
     writer.WritePod(event.serverTick);
@@ -358,51 +326,51 @@ std::vector<std::byte> SerializeNetworkEvent(const NetworkEventDTO& event)
         writer.WritePod(spawned->x);
         writer.WritePod(spawned->y);
     } else if (const auto* warmup = std::get_if<WeaponWarmupStartedEventDTO>(&event.payload);
-        warmup != nullptr) {
+               warmup != nullptr) {
         WriteEntityId(writer, warmup->entityId);
         writer.WritePod(warmup->startedAtMs);
         writer.WritePod(warmup->completesAtMs);
         writer.WritePod(static_cast<std::uint8_t>(warmup->weaponType));
     } else if (const auto* fired = std::get_if<BowFiredEventDTO>(&event.payload);
-        fired != nullptr) {
+               fired != nullptr) {
         WriteEntityId(writer, fired->entityId);
         writer.WritePod(fired->firedAtMs);
         writer.WritePod(static_cast<std::uint8_t>(fired->weaponType));
     } else if (const auto* projectile = std::get_if<ProjectileSpawnedEventDTO>(&event.payload);
-        projectile != nullptr) {
+               projectile != nullptr) {
         WriteEntityId(writer, projectile->projectileId);
         WriteEntityId(writer, projectile->ownerId);
         writer.WritePod(projectile->x);
         writer.WritePod(projectile->y);
         writer.WritePod(static_cast<std::uint8_t>(projectile->sourceWeapon));
     } else if (const auto* hit = std::get_if<HitConfirmedEventDTO>(&event.payload);
-        hit != nullptr) {
+               hit != nullptr) {
         WriteEntityId(writer, hit->attackerId);
         WriteEntityId(writer, hit->targetId);
         WriteEntityId(writer, hit->projectileId);
         writer.WritePod(hit->serverTimeMs);
     } else if (const auto* damaged = std::get_if<PlayerDamagedEventDTO>(&event.payload);
-        damaged != nullptr) {
+               damaged != nullptr) {
         WriteEntityId(writer, damaged->entityId);
         WriteEntityId(writer, damaged->attackerId);
         writer.WritePod(damaged->damage);
         writer.WritePod(damaged->healthAfter);
     } else if (const auto* died = std::get_if<PlayerDiedEventDTO>(&event.payload);
-        died != nullptr) {
+               died != nullptr) {
         WriteEntityId(writer, died->entityId);
         WriteEntityId(writer, died->attackerId);
         writer.WritePod(died->respawnAtMs);
     } else if (const auto* respawned = std::get_if<PlayerRespawnedEventDTO>(&event.payload);
-        respawned != nullptr) {
+               respawned != nullptr) {
         WriteEntityId(writer, respawned->entityId);
         writer.WritePod(respawned->x);
         writer.WritePod(respawned->y);
     } else if (const auto* entered = std::get_if<EntityEnteredInterestEventDTO>(&event.payload);
-        entered != nullptr) {
+               entered != nullptr) {
         WriteEntityId(writer, entered->entityId);
         writer.WritePod(entered->observerClientId);
     } else if (const auto* left = std::get_if<EntityLeftInterestEventDTO>(&event.payload);
-        left != nullptr) {
+               left != nullptr) {
         WriteEntityId(writer, left->entityId);
         writer.WritePod(left->observerClientId);
     }
@@ -410,8 +378,7 @@ std::vector<std::byte> SerializeNetworkEvent(const NetworkEventDTO& event)
     return writer.Bytes();
 }
 
-std::optional<NetworkEventDTO> DeserializeNetworkEvent(std::span<const std::byte> bytes)
-{
+std::optional<NetworkEventDTO> DeserializeNetworkEvent(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     NetworkEventDTO event{};
     const auto eventId = reader.ReadPod<NetworkEventId>();
@@ -429,133 +396,124 @@ std::optional<NetworkEventDTO> DeserializeNetworkEvent(std::span<const std::byte
     event.serverTimeMs = *serverTimeMs;
 
     switch (*kind) {
-    case NetworkEventKind::PlayerSpawned: {
-        const auto entityId = ReadEntityId(reader);
-        const auto clientId = reader.ReadPod<ClientId>();
-        const auto x = reader.ReadPod<Fixed>();
-        const auto y = reader.ReadPod<Fixed>();
-        if (!entityId.has_value() || !clientId.has_value() || !x.has_value() || !y.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::PlayerSpawned: {
+            const auto entityId = ReadEntityId(reader);
+            const auto clientId = reader.ReadPod<ClientId>();
+            const auto x = reader.ReadPod<Fixed>();
+            const auto y = reader.ReadPod<Fixed>();
+            if (!entityId.has_value() || !clientId.has_value() || !x.has_value() ||
+                !y.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = PlayerSpawnedEventDTO{*entityId, *clientId, *x, *y};
+            break;
         }
-        event.payload = PlayerSpawnedEventDTO{*entityId, *clientId, *x, *y};
-        break;
-    }
-    case NetworkEventKind::WeaponWarmupStarted: {
-        const auto entityId = ReadEntityId(reader);
-        const auto startedAtMs = reader.ReadPod<TimestampMs>();
-        const auto completesAtMs = reader.ReadPod<TimestampMs>();
-        const auto weaponType = ReadWeaponType(reader);
-        if (!entityId.has_value() || !startedAtMs.has_value() || !completesAtMs.has_value() ||
-            !weaponType.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::WeaponWarmupStarted: {
+            const auto entityId = ReadEntityId(reader);
+            const auto startedAtMs = reader.ReadPod<TimestampMs>();
+            const auto completesAtMs = reader.ReadPod<TimestampMs>();
+            const auto weaponType = ReadWeaponType(reader);
+            if (!entityId.has_value() || !startedAtMs.has_value() || !completesAtMs.has_value() ||
+                !weaponType.has_value()) {
+                return std::nullopt;
+            }
+            event.payload =
+                WeaponWarmupStartedEventDTO{*entityId, *startedAtMs, *completesAtMs, *weaponType};
+            break;
         }
-        event.payload = WeaponWarmupStartedEventDTO{
-            *entityId,
-            *startedAtMs,
-            *completesAtMs,
-            *weaponType};
-        break;
-    }
-    case NetworkEventKind::BowFired: {
-        const auto entityId = ReadEntityId(reader);
-        const auto firedAtMs = reader.ReadPod<TimestampMs>();
-        const auto weaponType = ReadWeaponType(reader);
-        if (!entityId.has_value() || !firedAtMs.has_value() || !weaponType.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::BowFired: {
+            const auto entityId = ReadEntityId(reader);
+            const auto firedAtMs = reader.ReadPod<TimestampMs>();
+            const auto weaponType = ReadWeaponType(reader);
+            if (!entityId.has_value() || !firedAtMs.has_value() || !weaponType.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = BowFiredEventDTO{*entityId, *firedAtMs, *weaponType};
+            break;
         }
-        event.payload = BowFiredEventDTO{
-            *entityId,
-            *firedAtMs,
-            *weaponType};
-        break;
-    }
-    case NetworkEventKind::ProjectileSpawned: {
-        const auto projectileId = ReadEntityId(reader);
-        const auto ownerId = ReadEntityId(reader);
-        const auto x = reader.ReadPod<Fixed>();
-        const auto y = reader.ReadPod<Fixed>();
-        const auto sourceWeapon = ReadWeaponType(reader);
-        if (!projectileId.has_value() || !ownerId.has_value() || !x.has_value() ||
-            !y.has_value() || !sourceWeapon.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::ProjectileSpawned: {
+            const auto projectileId = ReadEntityId(reader);
+            const auto ownerId = ReadEntityId(reader);
+            const auto x = reader.ReadPod<Fixed>();
+            const auto y = reader.ReadPod<Fixed>();
+            const auto sourceWeapon = ReadWeaponType(reader);
+            if (!projectileId.has_value() || !ownerId.has_value() || !x.has_value() ||
+                !y.has_value() || !sourceWeapon.has_value()) {
+                return std::nullopt;
+            }
+            event.payload =
+                ProjectileSpawnedEventDTO{*projectileId, *ownerId, *x, *y, *sourceWeapon};
+            break;
         }
-        event.payload = ProjectileSpawnedEventDTO{
-            *projectileId,
-            *ownerId,
-            *x,
-            *y,
-            *sourceWeapon};
-        break;
-    }
-    case NetworkEventKind::HitConfirmed: {
-        const auto attackerId = ReadEntityId(reader);
-        const auto targetId = ReadEntityId(reader);
-        const auto projectileId = ReadEntityId(reader);
-        const auto hitServerTimeMs = reader.ReadPod<TimestampMs>();
-        if (!attackerId.has_value() || !targetId.has_value() || !projectileId.has_value() ||
-            !hitServerTimeMs.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::HitConfirmed: {
+            const auto attackerId = ReadEntityId(reader);
+            const auto targetId = ReadEntityId(reader);
+            const auto projectileId = ReadEntityId(reader);
+            const auto hitServerTimeMs = reader.ReadPod<TimestampMs>();
+            if (!attackerId.has_value() || !targetId.has_value() || !projectileId.has_value() ||
+                !hitServerTimeMs.has_value()) {
+                return std::nullopt;
+            }
+            event.payload =
+                HitConfirmedEventDTO{*attackerId, *targetId, *projectileId, *hitServerTimeMs};
+            break;
         }
-        event.payload = HitConfirmedEventDTO{*attackerId, *targetId, *projectileId, *hitServerTimeMs};
-        break;
-    }
-    case NetworkEventKind::PlayerDamaged: {
-        const auto entityId = ReadEntityId(reader);
-        const auto attackerId = ReadEntityId(reader);
-        const auto damage = reader.ReadPod<std::int32_t>();
-        const auto healthAfter = reader.ReadPod<std::int32_t>();
-        if (!entityId.has_value() || !attackerId.has_value() || !damage.has_value() ||
-            !healthAfter.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::PlayerDamaged: {
+            const auto entityId = ReadEntityId(reader);
+            const auto attackerId = ReadEntityId(reader);
+            const auto damage = reader.ReadPod<std::int32_t>();
+            const auto healthAfter = reader.ReadPod<std::int32_t>();
+            if (!entityId.has_value() || !attackerId.has_value() || !damage.has_value() ||
+                !healthAfter.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = PlayerDamagedEventDTO{*entityId, *attackerId, *damage, *healthAfter};
+            break;
         }
-        event.payload = PlayerDamagedEventDTO{*entityId, *attackerId, *damage, *healthAfter};
-        break;
-    }
-    case NetworkEventKind::PlayerDied: {
-        const auto entityId = ReadEntityId(reader);
-        const auto attackerId = ReadEntityId(reader);
-        const auto respawnAtMs = reader.ReadPod<TimestampMs>();
-        if (!entityId.has_value() || !attackerId.has_value() || !respawnAtMs.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::PlayerDied: {
+            const auto entityId = ReadEntityId(reader);
+            const auto attackerId = ReadEntityId(reader);
+            const auto respawnAtMs = reader.ReadPod<TimestampMs>();
+            if (!entityId.has_value() || !attackerId.has_value() || !respawnAtMs.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = PlayerDiedEventDTO{*entityId, *attackerId, *respawnAtMs};
+            break;
         }
-        event.payload = PlayerDiedEventDTO{*entityId, *attackerId, *respawnAtMs};
-        break;
-    }
-    case NetworkEventKind::PlayerRespawned: {
-        const auto entityId = ReadEntityId(reader);
-        const auto x = reader.ReadPod<Fixed>();
-        const auto y = reader.ReadPod<Fixed>();
-        if (!entityId.has_value() || !x.has_value() || !y.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::PlayerRespawned: {
+            const auto entityId = ReadEntityId(reader);
+            const auto x = reader.ReadPod<Fixed>();
+            const auto y = reader.ReadPod<Fixed>();
+            if (!entityId.has_value() || !x.has_value() || !y.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = PlayerRespawnedEventDTO{*entityId, *x, *y};
+            break;
         }
-        event.payload = PlayerRespawnedEventDTO{*entityId, *x, *y};
-        break;
-    }
-    case NetworkEventKind::EntityEnteredInterest: {
-        const auto entityId = ReadEntityId(reader);
-        const auto observerClientId = reader.ReadPod<ClientId>();
-        if (!entityId.has_value() || !observerClientId.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::EntityEnteredInterest: {
+            const auto entityId = ReadEntityId(reader);
+            const auto observerClientId = reader.ReadPod<ClientId>();
+            if (!entityId.has_value() || !observerClientId.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = EntityEnteredInterestEventDTO{*entityId, *observerClientId};
+            break;
         }
-        event.payload = EntityEnteredInterestEventDTO{*entityId, *observerClientId};
-        break;
-    }
-    case NetworkEventKind::EntityLeftInterest: {
-        const auto entityId = ReadEntityId(reader);
-        const auto observerClientId = reader.ReadPod<ClientId>();
-        if (!entityId.has_value() || !observerClientId.has_value()) {
-            return std::nullopt;
+        case NetworkEventKind::EntityLeftInterest: {
+            const auto entityId = ReadEntityId(reader);
+            const auto observerClientId = reader.ReadPod<ClientId>();
+            if (!entityId.has_value() || !observerClientId.has_value()) {
+                return std::nullopt;
+            }
+            event.payload = EntityLeftInterestEventDTO{*entityId, *observerClientId};
+            break;
         }
-        event.payload = EntityLeftInterestEventDTO{*entityId, *observerClientId};
-        break;
-    }
     }
 
     return FinishDecode(reader, event);
 }
 
-std::vector<std::byte> SerializeNetworkEventAck(const NetworkEventAckDTO& ack)
-{
+std::vector<std::byte> SerializeNetworkEventAck(const NetworkEventAckDTO& ack) {
     BinaryWriter writer{};
     writer.WritePod(ack.clientId);
     writer.WritePod(ack.eventId);
@@ -563,8 +521,7 @@ std::vector<std::byte> SerializeNetworkEventAck(const NetworkEventAckDTO& ack)
     return writer.Bytes();
 }
 
-std::optional<NetworkEventAckDTO> DeserializeNetworkEventAck(std::span<const std::byte> bytes)
-{
+std::optional<NetworkEventAckDTO> DeserializeNetworkEventAck(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     NetworkEventAckDTO ack{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -581,8 +538,7 @@ std::optional<NetworkEventAckDTO> DeserializeNetworkEventAck(std::span<const std
     return FinishDecode(reader, ack);
 }
 
-std::vector<std::byte> SerializeSnapshotAck(const SnapshotAckDTO& ack)
-{
+std::vector<std::byte> SerializeSnapshotAck(const SnapshotAckDTO& ack) {
     BinaryWriter writer{};
     writer.WritePod(ack.clientId);
     writer.WritePod(ack.snapshotId);
@@ -592,8 +548,7 @@ std::vector<std::byte> SerializeSnapshotAck(const SnapshotAckDTO& ack)
     return writer.Bytes();
 }
 
-std::optional<SnapshotAckDTO> DeserializeSnapshotAck(std::span<const std::byte> bytes)
-{
+std::optional<SnapshotAckDTO> DeserializeSnapshotAck(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     SnapshotAckDTO ack{};
     const auto clientId = reader.ReadPod<ClientId>();
@@ -615,8 +570,7 @@ std::optional<SnapshotAckDTO> DeserializeSnapshotAck(std::span<const std::byte> 
     return FinishDecode(reader, ack);
 }
 
-std::vector<std::byte> SerializeSnapshot(const SnapshotDTO& snapshot)
-{
+std::vector<std::byte> SerializeSnapshot(const SnapshotDTO& snapshot) {
     BinaryWriter writer{};
     writer.WritePod(snapshot.snapshotId);
     writer.WritePod(snapshot.baselineId);
@@ -638,8 +592,7 @@ std::vector<std::byte> SerializeSnapshot(const SnapshotDTO& snapshot)
     return writer.Bytes();
 }
 
-std::optional<SnapshotDTO> DeserializeSnapshot(std::span<const std::byte> bytes)
-{
+std::optional<SnapshotDTO> DeserializeSnapshot(std::span<const std::byte> bytes) {
     BinaryReader reader{bytes};
     SnapshotDTO snapshot{};
     const auto snapshotId = reader.ReadPod<SnapshotId>();

@@ -4,8 +4,7 @@
 
 namespace game {
 
-InterestFrame InterestTracker::Update(const SnapshotDTO& snapshot)
-{
+InterestFrame InterestTracker::Update(const SnapshotDTO& snapshot) {
     InterestFrame frame{};
     std::unordered_set<NetworkEntityId> nextKnown{};
 
@@ -30,20 +29,16 @@ InterestFrame InterestTracker::Update(const SnapshotDTO& snapshot)
     return frame;
 }
 
-bool InterestTracker::Contains(NetworkEntityId entityId) const
-{
+bool InterestTracker::Contains(NetworkEntityId entityId) const {
     return knownEntities_.contains(entityId);
 }
 
-std::size_t InterestTracker::KnownEntityCount() const noexcept
-{
+std::size_t InterestTracker::KnownEntityCount() const noexcept {
     return knownEntities_.size();
 }
 
-void InterestTracker::Clear()
-{
+void InterestTracker::Clear() {
     knownEntities_.clear();
 }
 
 } // namespace game
-

@@ -8,12 +8,9 @@
 namespace game::client {
 
 RemoteClientSession::RemoteClientSession(std::unique_ptr<game::net::ITransport> transport)
-    : transport_(std::move(transport))
-{
-}
+    : transport_(std::move(transport)) {}
 
-bool RemoteClientSession::Connect(game::ClientId localClientId, game::TimestampMs nowMs)
-{
+bool RemoteClientSession::Connect(game::ClientId localClientId, game::TimestampMs nowMs) {
     if (!transport_) {
         return false;
     }
@@ -34,14 +31,12 @@ bool RemoteClientSession::Connect(game::ClientId localClientId, game::TimestampM
 
     ClientProtocolPump pump{*transport_};
     connected_ = pump.SendLogin(login);
-    stats_.connectionState = connected_
-        ? ClientConnectionState::AwaitingSpawn
-        : ClientConnectionState::Disconnected;
+    stats_.connectionState =
+        connected_ ? ClientConnectionState::AwaitingSpawn : ClientConnectionState::Disconnected;
     return connected_;
 }
 
-void RemoteClientSession::SendInput(const game::ClientInputPacket& packet)
-{
+void RemoteClientSession::SendInput(const game::ClientInputPacket& packet) {
     if (!connected_ || !transport_) {
         return;
     }
@@ -50,8 +45,7 @@ void RemoteClientSession::SendInput(const game::ClientInputPacket& packet)
     (void)pump.SendInput(packet);
 }
 
-void RemoteClientSession::Tick(game::TimestampMs nowMs)
-{
+void RemoteClientSession::Tick(game::TimestampMs nowMs) {
     lastTickTimeMs_ = nowMs;
 
     if (!connected_ || !transport_ || nowMs < nextTimeSyncAtMs_) {
@@ -70,8 +64,7 @@ void RemoteClientSession::Tick(game::TimestampMs nowMs)
     nextTimeSyncAtMs_ = nowMs + 1000;
 }
 
-void RemoteClientSession::Pump(ClientRuntime& runtime)
-{
+void RemoteClientSession::Pump(ClientRuntime& runtime) {
     if (!connected_ || !transport_) {
         return;
     }
@@ -80,15 +73,13 @@ void RemoteClientSession::Pump(ClientRuntime& runtime)
     (void)pump.PumpIncoming(runtime, stats_, reliableEvents_, lastTickTimeMs_);
 }
 
-game::EventList RemoteClientSession::DrainEvents()
-{
+game::EventList RemoteClientSession::DrainEvents() {
     game::EventList drained{};
     drained.swap(reliableEvents_);
     return drained;
 }
 
-ClientSessionStats RemoteClientSession::Stats() const noexcept
-{
+ClientSessionStats RemoteClientSession::Stats() const noexcept {
     return stats_;
 }
 

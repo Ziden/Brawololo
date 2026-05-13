@@ -20,6 +20,7 @@ enum class TransportError {
     NotConnected,
     ProtocolRejected,
     NotImplemented,
+    InvalidConfiguration,
     PeerClosed,
 };
 

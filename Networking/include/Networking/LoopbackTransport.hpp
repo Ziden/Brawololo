@@ -17,8 +17,8 @@ struct LoopbackNetworkConditions {
 class LoopbackTransport final : public ITransport {
 public:
     static std::pair<LoopbackTransport, LoopbackTransport> CreatePair();
-    static std::pair<LoopbackTransport, LoopbackTransport> CreatePair(
-        LoopbackNetworkConditions conditions);
+    static std::pair<LoopbackTransport, LoopbackTransport>
+    CreatePair(LoopbackNetworkConditions conditions);
 
     LoopbackTransport() = default;
 
@@ -47,10 +47,9 @@ private:
         std::queue<game::NetworkEnvelope> delayedBToA{};
     };
 
-    LoopbackTransport(
-        std::shared_ptr<SharedState> state,
-        Endpoint endpoint,
-        LoopbackNetworkConditions conditions = {});
+    LoopbackTransport(std::shared_ptr<SharedState> state,
+                      Endpoint endpoint,
+                      LoopbackNetworkConditions conditions = {});
 
     [[nodiscard]] std::queue<game::NetworkEnvelope>& IncomingQueue();
     [[nodiscard]] std::queue<game::NetworkEnvelope>& OutgoingQueue();

@@ -1,6 +1,7 @@
 #include "Client/ClientApplication.hpp"
 #include "Client/ClientEventLog.hpp"
 #include "Client/ClientRuntime.hpp"
+#include "Client/ClientVisualEffectLog.hpp"
 #include "Client/FixedStepClock.hpp"
 #include "Client/InProcessClientSession.hpp"
 #include "Client/RemoteClientSession.hpp"
@@ -10,6 +11,7 @@
 #include "Server/ServerRuntime.hpp"
 #include "TestSupport.hpp"
 
+#include <algorithm>
 #include <memory>
 
 namespace {
@@ -17,8 +19,7 @@ namespace {
 using test_support::ContainsEvent;
 using test_support::Expect;
 
-void TestLocalPredictionReconciliation()
-{
+void TestLocalPredictionReconciliation() {
     using namespace game;
 
     game::server::ServerRuntime server{};
@@ -38,14 +39,15 @@ void TestLocalPredictionReconciliation()
 
     snapshot.ackedInputSequence = 0;
     client.ApplyServerSnapshot(snapshot);
-    Expect(ContainsEvent<LocalPredictionCorrected>(client.DrainEvents()), "authoritative snapshot corrects local prediction");
+    Expect(ContainsEvent<LocalPredictionCorrected>(client.DrainEvents()),
+           "authoritative snapshot corrects local prediction");
     Expect(!client.UnackedInputs().empty(), "unacked input remains for replay");
 }
 
-void TestClientApplicationWithInProcessSession()
-{
+void TestClientApplicationWithInProcessSession() {
     auto session = std::make_unique<game::client::InProcessClientSession>();
-    game::client::ClientApplication app{std::move(session), game::client::ClientApplicationConfig{1}};
+    game::client::ClientApplication app{std::move(session),
+                                        game::client::ClientApplicationConfig{1}};
     Expect(app.Connect(0), "client application connects through in-process session");
 
     game::InputFrame input{};
@@ -56,14 +58,15 @@ void TestClientApplicationWithInProcessSession()
     app.TickFixed(16);
     const auto stats = app.Stats();
     Expect(stats.entityCount >= 1, "client application has replicated entities");
-    Expect(stats.session.snapshotsApplied >= 1, "in-process session applies snapshots through boundary");
+    Expect(stats.session.snapshotsApplied >= 1,
+           "in-process session applies snapshots through boundary");
     Expect(stats.unackedInputCount == 0, "authoritative snapshot acks in-process input");
 }
 
-void TestRemoteClientSessionScaffold()
-{
+void TestRemoteClientSessionScaffold() {
     auto transports = game::net::LoopbackTransport::CreatePair();
-    auto remoteTransport = std::make_unique<game::net::LoopbackTransport>(std::move(transports.first));
+    auto remoteTransport =
+        std::make_unique<game::net::LoopbackTransport>(std::move(transports.first));
     game::server::ServerNetworkHost serverHost{transports.second};
     game::client::RemoteClientSession session{std::move(remoteTransport)};
     game::client::ClientRuntime runtime{9};
@@ -81,11 +84,11 @@ void TestRemoteClientSessionScaffold()
     serverHost.TickAndSendSnapshots(16);
     session.Pump(runtime);
 
-    Expect(session.Stats().snapshotsApplied == 1, "remote session applies snapshot via shared pump");
+    Expect(session.Stats().snapshotsApplied == 1,
+           "remote session applies snapshot via shared pump");
 }
 
-void TestFixedStepClockAndEventLog()
-{
+void TestFixedStepClockAndEventLog() {
     game::client::FixedStepClock clock{game::client::FixedStepClockConfig{
         0.016F,
         0.100F,
@@ -122,24 +125,60 @@ void TestFixedStepClockAndEventLog()
     Expect(log.Size() == 0, "event log expires old entries");
 }
 
+void TestClientVisualEffectLogUsesDomainEvents() {
+    game::client::ClientRuntime runtime{1};
+    Expect(runtime.ConnectLocal(0), "visual effect test connects local runtime");
+    (void)runtime.DrainEvents();
+
+    game::InputFrame fire{};
+    fire.fire = true;
+    (void)runtime.QueueInput(fire, 16);
+    runtime.TickSimulation();
+
+    auto events = runtime.DrainEvents();
+    game::client::ClientVisualEffectLog effects{};
+    effects.PushFromEvents(events, runtime);
+
+    const auto localEffects = effects.Effects();
+    Expect(!localEffects.empty(), "visual effect log creates local fire effect");
+    Expect(localEffects.front().kind == game::client::ViewEffectKind::PredictedFire,
+           "local fire effect is explicitly cosmetic/predicted");
+
+    const auto entityId = runtime.Simulation().PlayerEntityForClient(1);
+    Expect(entityId.has_value(), "visual effect test has player entity");
+    effects.PushFromEvents(game::EventList{game::PlayerDamaged{*entityId, *entityId, 35, 65}},
+                           runtime);
+
+    const auto combatEffects = effects.Effects();
+    const auto hasDamageEffect = std::any_of(
+        combatEffects.begin(), combatEffects.end(), [](const game::client::ViewEffect& effect) {
+            return effect.kind == game::client::ViewEffectKind::AuthoritativeHit &&
+                   effect.amount == 35;
+        });
+    Expect(hasDamageEffect, "authoritative damage event creates hit feedback");
+
+    effects.Update(2.0F);
+    Expect(effects.Size() == 0, "visual effects expire independently of simulation");
+}
+
 } // namespace
 
-TEST(ClientTests, LocalPredictionReconciliation)
-{
+TEST(ClientTests, LocalPredictionReconciliation) {
     TestLocalPredictionReconciliation();
 }
 
-TEST(ClientTests, ClientApplicationWithInProcessSession)
-{
+TEST(ClientTests, ClientApplicationWithInProcessSession) {
     TestClientApplicationWithInProcessSession();
 }
 
-TEST(ClientTests, RemoteClientSessionScaffold)
-{
+TEST(ClientTests, RemoteClientSessionScaffold) {
     TestRemoteClientSessionScaffold();
 }
 
-TEST(ClientTests, FixedStepClockAndEventLog)
-{
+TEST(ClientTests, FixedStepClockAndEventLog) {
     TestFixedStepClockAndEventLog();
+}
+
+TEST(ClientTests, ClientVisualEffectLogUsesDomainEvents) {
+    TestClientVisualEffectLogUsesDomainEvents();
 }

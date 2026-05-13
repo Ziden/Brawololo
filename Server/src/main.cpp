@@ -4,10 +4,10 @@
 #include <iostream>
 #include <memory>
 
-int main()
-{
+int main() {
     auto transports = game::net::LoopbackTransport::CreatePair();
-    auto serverTransport = std::make_unique<game::net::LoopbackTransport>(std::move(transports.second));
+    auto serverTransport =
+        std::make_unique<game::net::LoopbackTransport>(std::move(transports.second));
 
     game::server::ServerApplication server{std::move(serverTransport)};
     if (!server.Start()) {
@@ -19,11 +19,7 @@ int main()
     const auto stats = server.Stats();
     server.RequestStop();
 
-    std::cout << "Server application smoke ran. Ticks: "
-              << stats.ticksRun
-              << ", network clients: "
-              << stats.network.connectedClients
-              << '\n';
+    std::cout << "Server application smoke ran. Ticks: " << stats.ticksRun
+              << ", network clients: " << stats.network.connectedClients << '\n';
     return 0;
 }
-

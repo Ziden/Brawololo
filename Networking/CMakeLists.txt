@@ -1,6 +1,7 @@
 add_library(Networking STATIC
     src/KcpRtcTransport.cpp
     src/LoopbackTransport.cpp
+    src/MultiClientLoopbackTransport.cpp
 )
 
 target_include_directories(Networking
@@ -15,4 +16,3 @@ if(SCAFFOLD_ENABLE_RTC_TRANSPORT AND TARGET LibDataChannel::LibDataChannel)
     target_link_libraries(Networking PRIVATE LibDataChannel::LibDataChannel)
     target_compile_definitions(Networking PRIVATE SCAFFOLD_ENABLE_RTC_TRANSPORT=1)
 endif()
-

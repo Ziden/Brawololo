@@ -6,8 +6,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace game::server {
 
@@ -21,23 +23,17 @@ struct PendingReliableEvent {
 class ServerClientReplicationState {
 public:
     ServerClientReplicationState() = default;
-    explicit ServerClientReplicationState(game::ClientId clientId)
-        : clientId_(clientId)
-    {
-    }
+    explicit ServerClientReplicationState(game::ClientId clientId) : clientId_(clientId) {}
 
-    [[nodiscard]] game::ClientId ClientId() const noexcept
-    {
+    [[nodiscard]] game::ClientId ClientId() const noexcept {
         return clientId_;
     }
 
-    [[nodiscard]] game::SnapshotId AckedSnapshot() const noexcept
-    {
+    [[nodiscard]] game::SnapshotId AckedSnapshot() const noexcept {
         return ackedSnapshot_;
     }
 
-    [[nodiscard]] bool AcknowledgeSnapshot(game::SnapshotId snapshotId) noexcept
-    {
+    [[nodiscard]] bool AcknowledgeSnapshot(game::SnapshotId snapshotId) noexcept {
         if (snapshotId <= ackedSnapshot_) {
             return false;
         }
@@ -46,23 +42,19 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool ShouldSendSnapshot(game::TimestampMs nowMs) const noexcept
-    {
+    [[nodiscard]] bool ShouldSendSnapshot(game::TimestampMs nowMs) const noexcept {
         return nowMs >= nextSnapshotSendAtMs_;
     }
 
-    void MarkSnapshotSent(game::TimestampMs nowMs, game::TimestampMs intervalMs) noexcept
-    {
+    void MarkSnapshotSent(game::TimestampMs nowMs, game::TimestampMs intervalMs) noexcept {
         nextSnapshotSendAtMs_ = nowMs + intervalMs;
     }
 
-    [[nodiscard]] game::InterestTracker& Interest() noexcept
-    {
+    [[nodiscard]] game::InterestTracker& Interest() noexcept {
         return interest_;
     }
 
-    void TrackReliableEvent(game::NetworkEventDTO event, game::TimestampMs nowMs)
-    {
+    void TrackReliableEvent(game::NetworkEventDTO event, game::TimestampMs nowMs) {
         auto& pending = pendingReliableEvents_[event.eventId];
         if (pending.sendCount == 0) {
             pending.firstSentAtMs = nowMs;
@@ -73,14 +65,34 @@ public:
         ++pending.sendCount;
     }
 
-    [[nodiscard]] bool AcknowledgeReliableEvent(game::NetworkEventId eventId)
-    {
+    [[nodiscard]] bool AcknowledgeReliableEvent(game::NetworkEventId eventId) {
         return pendingReliableEvents_.erase(eventId) > 0;
     }
 
-    [[nodiscard]] std::size_t PendingReliableEventCount() const noexcept
-    {
+    [[nodiscard]] std::size_t PendingReliableEventCount() const noexcept {
         return pendingReliableEvents_.size();
+    }
+
+    [[nodiscard]] std::vector<game::NetworkEventDTO> ReliableEventsDueForResend(
+        game::TimestampMs nowMs,
+        game::TimestampMs baseIntervalMs,
+        std::uint32_t maxSendCount) const {
+        std::vector<game::NetworkEventDTO> due{};
+        for (const auto& [eventId, pending] : pendingReliableEvents_) {
+            (void)eventId;
+            if (maxSendCount != 0 && pending.sendCount >= maxSendCount) {
+                continue;
+            }
+
+            const auto backoffShift = std::min<std::uint32_t>(
+                pending.sendCount > 0 ? pending.sendCount - 1 : 0,
+                4);
+            const auto resendDelayMs = baseIntervalMs << backoffShift;
+            if (nowMs >= pending.lastSentAtMs + resendDelayMs) {
+                due.push_back(pending.event);
+            }
+        }
+        return due;
     }
 
 private:

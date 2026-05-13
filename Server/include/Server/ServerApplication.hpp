@@ -21,7 +21,8 @@ struct ServerApplicationStats {
 
 class ServerApplication {
 public:
-    ServerApplication(std::unique_ptr<game::net::ITransport> transport, ServerApplicationConfig config = {});
+    ServerApplication(std::unique_ptr<game::net::ITransport> transport,
+                      ServerApplicationConfig config = {});
     ~ServerApplication();
 
     ServerApplication(const ServerApplication&) = delete;

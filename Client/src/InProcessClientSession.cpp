@@ -9,15 +9,13 @@
 namespace game::client {
 
 InProcessClientSession::InProcessClientSession(InProcessClientSessionConfig config)
-    : config_(std::move(config))
-{
-}
+    : config_(std::move(config)) {}
 
-bool InProcessClientSession::Connect(game::ClientId localClientId, game::TimestampMs nowMs)
-{
+bool InProcessClientSession::Connect(game::ClientId localClientId, game::TimestampMs nowMs) {
     localClientId_ = localClientId;
     stats_.localClientId = localClientId_;
     stats_.connectionState = ClientConnectionState::Connecting;
+    simulationOnlyDrivers_.clear();
     auto transports = game::net::LoopbackTransport::CreatePair();
     clientTransport_ = std::move(transports.first);
     serverTransport_ = std::move(transports.second);
@@ -30,22 +28,26 @@ bool InProcessClientSession::Connect(game::ClientId localClientId, game::Timesta
 
     ClientProtocolPump clientPump{clientTransport_};
     connected_ = clientPump.SendLogin(login);
-    stats_.connectionState = connected_
-        ? ClientConnectionState::AwaitingSpawn
-        : ClientConnectionState::Disconnected;
+    stats_.connectionState =
+        connected_ ? ClientConnectionState::AwaitingSpawn : ClientConnectionState::Disconnected;
     serverHost_->PumpClientMessages();
 
     for (const auto clientId : config_.extraServerClients) {
         if (clientId != localClientId_) {
             connected_ = serverHost_->ConnectSimulationOnlyClient(clientId, nowMs) && connected_;
+            if (connected_ && config_.enableScriptedServerClients) {
+                simulationOnlyDrivers_.emplace_back(game::server::SimulationOnlyClientDriverConfig{
+                    clientId,
+                    localClientId_,
+                });
+            }
         }
     }
 
     return connected_;
 }
 
-void InProcessClientSession::SendInput(const game::ClientInputPacket& packet)
-{
+void InProcessClientSession::SendInput(const game::ClientInputPacket& packet) {
     if (!connected_) {
         return;
     }
@@ -54,8 +56,7 @@ void InProcessClientSession::SendInput(const game::ClientInputPacket& packet)
     (void)pump.SendInput(packet);
 }
 
-void InProcessClientSession::Tick(game::TimestampMs nowMs)
-{
+void InProcessClientSession::Tick(game::TimestampMs nowMs) {
     if (!connected_ || !serverHost_) {
         return;
     }
@@ -76,11 +77,13 @@ void InProcessClientSession::Tick(game::TimestampMs nowMs)
     }
 
     serverHost_->PumpClientMessages();
+    for (auto& driver : simulationOnlyDrivers_) {
+        (void)driver.Tick(serverHost_->Runtime(), nowMs);
+    }
     serverHost_->TickAndSendSnapshots(nowMs);
 }
 
-void InProcessClientSession::Pump(ClientRuntime& runtime)
-{
+void InProcessClientSession::Pump(ClientRuntime& runtime) {
     if (!connected_) {
         return;
     }
@@ -89,15 +92,13 @@ void InProcessClientSession::Pump(ClientRuntime& runtime)
     (void)pump.PumpIncoming(runtime, stats_, reliableEvents_, lastTickTimeMs_);
 }
 
-game::EventList InProcessClientSession::DrainEvents()
-{
+game::EventList InProcessClientSession::DrainEvents() {
     game::EventList drained{};
     drained.swap(reliableEvents_);
     return drained;
 }
 
-ClientSessionStats InProcessClientSession::Stats() const noexcept
-{
+ClientSessionStats InProcessClientSession::Stats() const noexcept {
     return stats_;
 }
 

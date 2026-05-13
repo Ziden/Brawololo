@@ -5,39 +5,38 @@
 namespace game {
 namespace {
 
-Fixed IntegrateFixedPerSecond(Fixed valuePerSecond, TimestampMs tickDurationMs)
-{
+Fixed IntegrateFixedPerSecond(Fixed valuePerSecond, TimestampMs tickDurationMs) {
     return static_cast<Fixed>(
-        (static_cast<std::int64_t>(valuePerSecond) * static_cast<std::int64_t>(tickDurationMs)) / 1000);
+        (static_cast<std::int64_t>(valuePerSecond) * static_cast<std::int64_t>(tickDurationMs)) /
+        1000);
 }
 
-Fixed ApplyInputAcceleration(Fixed velocity, Fixed accelerationDelta, std::int16_t normalizedInput)
-{
-    return velocity + static_cast<Fixed>(
-        (static_cast<std::int64_t>(accelerationDelta) * normalizedInput) / kFixedOne);
+Fixed ApplyInputAcceleration(Fixed velocity,
+                             Fixed accelerationDelta,
+                             std::int16_t normalizedInput) {
+    return velocity +
+           static_cast<Fixed>((static_cast<std::int64_t>(accelerationDelta) * normalizedInput) /
+                              kFixedOne);
 }
 
-Fixed ApplyFriction(Fixed velocity)
-{
+Fixed ApplyFriction(Fixed velocity) {
     return FixedMulRatio(velocity, 72, 100);
 }
 
 } // namespace
 
-void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPacket& packet)
-{
+void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPacket& packet) {
     if (const auto* player = registry_.try_get<PlayerComponent>(entity);
         player != nullptr && player->defeated) {
         return;
     }
 
-    registry_.emplace_or_replace<InputIntentComponent>(
-        entity,
-        packet.input.moveX,
-        packet.input.moveY,
-        packet.input.aimX,
-        packet.input.aimY,
-        packet.input.fire);
+    registry_.emplace_or_replace<InputIntentComponent>(entity,
+                                                       packet.input.moveX,
+                                                       packet.input.moveY,
+                                                       packet.input.aimX,
+                                                       packet.input.aimY,
+                                                       packet.input.fire);
 
     auto& aim = registry_.get_or_emplace<AimComponent>(entity);
     if (packet.input.aimX != 0 || packet.input.aimY != 0) {
@@ -45,7 +44,8 @@ void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPa
         aim.y = packet.input.aimY;
     }
 
-    if (packet.input.fire && registry_.all_of<WeaponStateComponent, NetworkIdentityComponent>(entity)) {
+    if (packet.input.fire &&
+        registry_.all_of<WeaponStateComponent, NetworkIdentityComponent>(entity)) {
         auto& weapon = registry_.get<WeaponStateComponent>(entity);
         const auto* definition = FindWeaponDefinition(config_.weapons, weapon.type);
         if (definition == nullptr || weapon.type == WeaponType::None) {
@@ -58,17 +58,14 @@ void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPa
             weapon.warmupStartedAtMs = timeMs_;
             weapon.warmupCompletesAtMs = timeMs_ + definition->warmupMs;
             QueueEvent(WeaponWarmupStarted{
-                identity.id,
-                weapon.warmupStartedAtMs,
-                weapon.warmupCompletesAtMs,
-                weapon.type});
+                identity.id, weapon.warmupStartedAtMs, weapon.warmupCompletesAtMs, weapon.type});
         }
     }
 }
 
-void GameSimulation::IntegrateMovement(entt::entity entity)
-{
-    if (!registry_.all_of<NetworkIdentityComponent, TransformComponent, VelocityComponent>(entity)) {
+void GameSimulation::IntegrateMovement(entt::entity entity) {
+    if (!registry_.all_of<NetworkIdentityComponent, TransformComponent, VelocityComponent>(
+            entity)) {
         return;
     }
 
@@ -88,9 +85,8 @@ void GameSimulation::IntegrateMovement(entt::entity entity)
 
     if (const auto* input = registry_.try_get<InputIntentComponent>(entity); input != nullptr) {
         const auto normalized = NormalizeDigitalInput(input->moveX, input->moveY);
-        const auto accelerationDelta = IntegrateFixedPerSecond(
-            config_.movementAccelerationPerSecond,
-            config_.tickDurationMs);
+        const auto accelerationDelta =
+            IntegrateFixedPerSecond(config_.movementAccelerationPerSecond, config_.tickDurationMs);
         velocity.vx = ApplyInputAcceleration(velocity.vx, accelerationDelta, normalized.x);
         velocity.vy = ApplyInputAcceleration(velocity.vy, accelerationDelta, normalized.y);
     } else {
@@ -98,8 +94,10 @@ void GameSimulation::IntegrateMovement(entt::entity entity)
         velocity.vy = ApplyFriction(velocity.vy);
     }
 
-    velocity.vx = ClampFixed(velocity.vx, -config_.maxMoveSpeedPerSecond, config_.maxMoveSpeedPerSecond);
-    velocity.vy = ClampFixed(velocity.vy, -config_.maxMoveSpeedPerSecond, config_.maxMoveSpeedPerSecond);
+    velocity.vx =
+        ClampFixed(velocity.vx, -config_.maxMoveSpeedPerSecond, config_.maxMoveSpeedPerSecond);
+    velocity.vy =
+        ClampFixed(velocity.vy, -config_.maxMoveSpeedPerSecond, config_.maxMoveSpeedPerSecond);
     transform.x += IntegrateFixedPerSecond(velocity.vx, config_.tickDurationMs);
     transform.y += IntegrateFixedPerSecond(velocity.vy, config_.tickDurationMs);
     ClampToMap(transform);
@@ -109,8 +107,7 @@ void GameSimulation::IntegrateMovement(entt::entity entity)
     }
 }
 
-void GameSimulation::ProcessInputs()
-{
+void GameSimulation::ProcessInputs() {
     for (const auto& input : pendingInputs_) {
         const auto player = PlayerEntityForClient(input.header.clientId);
         if (!player.has_value()) {
@@ -133,8 +130,7 @@ void GameSimulation::ProcessInputs()
     registry_.clear<InputIntentComponent>();
 }
 
-void GameSimulation::ClampToMap(TransformComponent& transform) const
-{
+void GameSimulation::ClampToMap(TransformComponent& transform) const {
     transform.x = ClampFixed(transform.x, 0, MapWidthFixed(config_.map) - 1);
     transform.y = ClampFixed(transform.y, 0, MapHeightFixed(config_.map) - 1);
 }

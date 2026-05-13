@@ -2,15 +2,10 @@
 
 namespace game {
 
-LagCompensationService::LagCompensationService(LagCompensationConfig config)
-    : config_(config)
-{
-}
+LagCompensationService::LagCompensationService(LagCompensationConfig config) : config_(config) {}
 
-LagCompensationResult LagCompensationService::Query(
-    const LagCompensationHistory& history,
-    const LagCompensationQuery& query) const
-{
+LagCompensationResult LagCompensationService::Query(const LagCompensationHistory& history,
+                                                    const LagCompensationQuery& query) const {
     LagCompensationResult result{};
     result.targetServerTimeMs = MapClientTimeToServerTime(query);
 
@@ -36,10 +31,10 @@ LagCompensationResult LagCompensationService::Query(
     return result;
 }
 
-TimestampMs LagCompensationService::MapClientTimeToServerTime(const LagCompensationQuery& query) const
-{
-    const auto mapped = static_cast<std::int64_t>(query.clientTimestampMs) +
-        query.clientToServerOffsetMs;
+TimestampMs
+LagCompensationService::MapClientTimeToServerTime(const LagCompensationQuery& query) const {
+    const auto mapped =
+        static_cast<std::int64_t>(query.clientTimestampMs) + query.clientToServerOffsetMs;
     return mapped <= 0 ? TimestampMs{} : static_cast<TimestampMs>(mapped);
 }
 

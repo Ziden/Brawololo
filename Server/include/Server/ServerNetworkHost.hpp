@@ -5,9 +5,11 @@
 #include "GameLogic/NetworkEvents.hpp"
 #include "GameLogic/ReplicationPlanner.hpp"
 #include "GameLogic/SnapshotBaselineCache.hpp"
+#include "GameLogic/SnapshotDelta.hpp"
 #include "Server/ServerClientReplicationState.hpp"
 #include "Server/ServerRuntime.hpp"
 
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 
@@ -22,6 +24,7 @@ struct ServerNetworkStats {
     std::size_t timeSyncRequestsReceived{};
     std::size_t timeSyncResponsesSent{};
     std::size_t reliableEventsSent{};
+    std::size_t reliableEventsResent{};
     std::size_t reliableEventAcksReceived{};
     std::size_t staleReliableEventAcksRejected{};
     std::size_t snapshotsSent{};
@@ -29,6 +32,11 @@ struct ServerNetworkStats {
     std::size_t fullSnapshotsSent{};
     std::size_t deltaEligibleSnapshotsSent{};
     std::size_t baselineMisses{};
+    std::size_t deltaPlaceholderSnapshotsPlanned{};
+    std::size_t deltaPlaceholderAddedEntities{};
+    std::size_t deltaPlaceholderChangedEntities{};
+    std::size_t deltaPlaceholderRemovedEntities{};
+    std::size_t deltaPlaceholderUnchangedEntities{};
     std::size_t snapshotEntitiesSent{};
     std::size_t snapshotEntitiesDropped{};
     std::size_t interestEnterEvents{};
@@ -40,13 +48,17 @@ struct ServerNetworkHostConfig {
     game::ReplicationPlannerConfig replication{};
     game::SnapshotBaselineCacheConfig baselines{};
     game::TimestampMs snapshotSendIntervalMs{16};
+    game::TimestampMs reliableEventResendBaseIntervalMs{250};
+    std::uint32_t reliableEventMaxSendCount{8};
 };
 
 class ServerNetworkHost {
 public:
-    explicit ServerNetworkHost(game::net::ITransport& transport, ServerNetworkHostConfig config = {});
+    explicit ServerNetworkHost(game::net::ITransport& transport,
+                               ServerNetworkHostConfig config = {});
 
-    [[nodiscard]] bool ConnectSimulationOnlyClient(game::ClientId clientId, game::TimestampMs nowMs = 0);
+    [[nodiscard]] bool ConnectSimulationOnlyClient(game::ClientId clientId,
+                                                   game::TimestampMs nowMs = 0);
     void PumpClientMessages();
     void TickAndSendSnapshots(game::TimestampMs nowMs);
 
@@ -61,11 +73,20 @@ private:
     void HandleSnapshotAckEnvelope(const game::NetworkEnvelope& envelope);
     void HandleNetworkEventAckEnvelope(const game::NetworkEnvelope& envelope);
     void HandleTimeSyncEnvelope(const game::NetworkEnvelope& envelope);
-    void BroadcastReliableEvents(const game::EventList& events);
-    void SendReliableEvent(game::ClientId clientId, const game::NetworkEventDTO& event);
+    void BroadcastReliableEvents(const game::EventList& events, game::TimestampMs nowMs);
+    void ResendPendingReliableEvents(game::TimestampMs nowMs);
+    void SendInterestEvents(
+        game::ClientId clientId,
+        const game::InterestFrame& interestFrame,
+        game::TimestampMs nowMs);
+    void SendReliableEvent(
+        game::ClientId clientId,
+        const game::NetworkEventDTO& event,
+        game::TimestampMs nowMs,
+        bool isResend = false);
     [[nodiscard]] bool ShouldSendSnapshot(game::ClientId clientId, game::TimestampMs nowMs) const;
     void MarkSnapshotSent(game::ClientId clientId, game::TimestampMs nowMs);
-    [[nodiscard]] bool SendSnapshot(game::ClientId clientId);
+    [[nodiscard]] bool SendSnapshot(game::ClientId clientId, game::TimestampMs nowMs);
 
     game::net::ITransport& transport_;
     ServerNetworkHostConfig config_{};

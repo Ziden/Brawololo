@@ -12,21 +12,16 @@ namespace game {
 
 class LagCompensationHistory {
 public:
-    explicit LagCompensationHistory(std::size_t maxSnapshots = 128)
-        : maxSnapshots_(maxSnapshots)
-    {
-    }
+    explicit LagCompensationHistory(std::size_t maxSnapshots = 128) : maxSnapshots_(maxSnapshots) {}
 
-    void Record(SnapshotDTO snapshot)
-    {
+    void Record(SnapshotDTO snapshot) {
         snapshots_.push_back(std::move(snapshot));
         while (snapshots_.size() > maxSnapshots_) {
             snapshots_.pop_front();
         }
     }
 
-    [[nodiscard]] std::optional<SnapshotDTO> ClosestAtOrBefore(TimestampMs serverTimeMs) const
-    {
+    [[nodiscard]] std::optional<SnapshotDTO> ClosestAtOrBefore(TimestampMs serverTimeMs) const {
         std::optional<SnapshotDTO> result{};
         for (const auto& snapshot : snapshots_) {
             if (snapshot.serverTimeMs <= serverTimeMs) {
@@ -36,13 +31,11 @@ public:
         return result;
     }
 
-    [[nodiscard]] std::size_t SnapshotCount() const noexcept
-    {
+    [[nodiscard]] std::size_t SnapshotCount() const noexcept {
         return snapshots_.size();
     }
 
-    [[nodiscard]] std::optional<TimestampMs> OldestTimeMs() const noexcept
-    {
+    [[nodiscard]] std::optional<TimestampMs> OldestTimeMs() const noexcept {
         if (snapshots_.empty()) {
             return std::nullopt;
         }
@@ -50,8 +43,7 @@ public:
         return snapshots_.front().serverTimeMs;
     }
 
-    [[nodiscard]] std::optional<TimestampMs> NewestTimeMs() const noexcept
-    {
+    [[nodiscard]] std::optional<TimestampMs> NewestTimeMs() const noexcept {
         if (snapshots_.empty()) {
             return std::nullopt;
         }
@@ -95,9 +87,8 @@ class LagCompensationService {
 public:
     explicit LagCompensationService(LagCompensationConfig config = {});
 
-    [[nodiscard]] LagCompensationResult Query(
-        const LagCompensationHistory& history,
-        const LagCompensationQuery& query) const;
+    [[nodiscard]] LagCompensationResult Query(const LagCompensationHistory& history,
+                                              const LagCompensationQuery& query) const;
 
 private:
     [[nodiscard]] TimestampMs MapClientTimeToServerTime(const LagCompensationQuery& query) const;

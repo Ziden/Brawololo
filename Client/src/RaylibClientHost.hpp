@@ -2,6 +2,7 @@
 
 #include "Client/ClientApplication.hpp"
 #include "Client/ClientEventLog.hpp"
+#include "Client/ClientVisualEffectLog.hpp"
 #include "Client/FixedStepClock.hpp"
 #include "RaylibGameView.hpp"
 
@@ -25,7 +26,7 @@ private:
     RaylibClientHostConfig config_{};
     FixedStepClock fixedStep_{};
     ClientEventLog eventLog_{};
+    ClientVisualEffectLog visualEffectLog_{};
 };
 
 } // namespace game::client
-

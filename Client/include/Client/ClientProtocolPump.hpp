@@ -18,15 +18,13 @@ public:
     [[nodiscard]] bool SendSnapshotAck(const game::SnapshotAckDTO& ack);
     [[nodiscard]] bool SendNetworkEventAck(const game::NetworkEventAckDTO& ack);
     [[nodiscard]] bool SendTimeSyncRequest(const game::TimeSyncRequest& request);
-    int PumpIncoming(
-        ClientRuntime& runtime,
-        ClientSessionStats& stats,
-        game::EventList& reliableEvents,
-        game::TimestampMs localReceiveTimeMs = 0);
-    int PumpSnapshots(
-        ClientRuntime& runtime,
-        ClientSessionStats& stats,
-        game::TimestampMs localReceiveTimeMs = 0);
+    int PumpIncoming(ClientRuntime& runtime,
+                     ClientSessionStats& stats,
+                     game::EventList& reliableEvents,
+                     game::TimestampMs localReceiveTimeMs = 0);
+    int PumpSnapshots(ClientRuntime& runtime,
+                      ClientSessionStats& stats,
+                      game::TimestampMs localReceiveTimeMs = 0);
 
 private:
     game::net::ITransport& transport_;

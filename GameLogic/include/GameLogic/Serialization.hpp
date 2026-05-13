@@ -26,9 +26,7 @@ enum class DecodeError : std::uint8_t {
 
 class BinaryWriter {
 public:
-    template <typename T>
-    void WritePod(const T& value)
-    {
+    template <typename T> void WritePod(const T& value) {
         static_assert(std::is_trivially_copyable_v<T>);
         const auto* bytes = reinterpret_cast<const std::byte*>(&value);
         bytes_.insert(bytes_.end(), bytes, bytes + sizeof(T));
@@ -44,18 +42,15 @@ class BinaryReader {
 public:
     explicit BinaryReader(std::span<const std::byte> bytes);
 
-    [[nodiscard]] std::size_t RemainingBytes() const noexcept
-    {
+    [[nodiscard]] std::size_t RemainingBytes() const noexcept {
         return bytes_.size() - offset_;
     }
 
-    [[nodiscard]] DecodeError Error() const noexcept
-    {
+    [[nodiscard]] DecodeError Error() const noexcept {
         return error_;
     }
 
-    [[nodiscard]] bool Finish() noexcept
-    {
+    [[nodiscard]] bool Finish() noexcept {
         if (error_ != DecodeError::None) {
             return false;
         }
@@ -68,9 +63,7 @@ public:
         return true;
     }
 
-    template <typename T>
-    std::optional<T> ReadPod()
-    {
+    template <typename T> std::optional<T> ReadPod() {
         static_assert(std::is_trivially_copyable_v<T>);
         if (offset_ + sizeof(T) > bytes_.size()) {
             Fail(DecodeError::UnexpectedEof);
@@ -85,9 +78,7 @@ public:
         return value;
     }
 
-    template <typename Enum>
-    std::optional<Enum> ReadEnum(std::underlying_type_t<Enum> maxValue)
-    {
+    template <typename Enum> std::optional<Enum> ReadEnum(std::underlying_type_t<Enum> maxValue) {
         static_assert(std::is_enum_v<Enum>);
         using Underlying = std::underlying_type_t<Enum>;
 
@@ -104,8 +95,7 @@ public:
         return static_cast<Enum>(*value);
     }
 
-    [[nodiscard]] std::optional<bool> ReadBool()
-    {
+    [[nodiscard]] std::optional<bool> ReadBool() {
         const auto value = ReadPod<std::uint8_t>();
         if (!value.has_value()) {
             return std::nullopt;
@@ -119,8 +109,7 @@ public:
         return *value != 0;
     }
 
-    [[nodiscard]] std::optional<std::uint32_t> ReadCount(std::size_t maxValue)
-    {
+    [[nodiscard]] std::optional<std::uint32_t> ReadCount(std::size_t maxValue) {
         const auto value = ReadPod<std::uint32_t>();
         if (!value.has_value()) {
             return std::nullopt;
@@ -135,8 +124,7 @@ public:
     }
 
 private:
-    void Fail(DecodeError error) noexcept
-    {
+    void Fail(DecodeError error) noexcept {
         if (error_ == DecodeError::None) {
             error_ = error;
         }

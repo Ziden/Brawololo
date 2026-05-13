@@ -2,13 +2,23 @@
 
 #include "Networking/ITransport.hpp"
 
+#include <cstddef>
 #include <string>
 
 namespace game::net {
 
+enum class KcpRtcRole {
+    Client,
+    Server,
+};
+
 struct KcpRtcTransportConfig {
+    KcpRtcRole role{KcpRtcRole::Client};
+    game::ClientId localPeerId{};
     std::string peerName{};
     std::string signalingUrl{};
+    std::string dataChannelLabel{"game"};
+    std::size_t maxBufferedAmountBytes{1024U * 1024U};
     bool unorderedDataChannel{true};
 };
 
@@ -33,4 +43,3 @@ private:
 };
 
 } // namespace game::net
-

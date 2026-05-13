@@ -7,20 +7,15 @@
 namespace game {
 namespace {
 
-SnapshotPriority BetterPriority(SnapshotPriority left, SnapshotPriority right)
-{
+SnapshotPriority BetterPriority(SnapshotPriority left, SnapshotPriority right) {
     return static_cast<std::uint8_t>(left) >= static_cast<std::uint8_t>(right) ? left : right;
 }
 
 } // namespace
 
-GameSimulation::GameSimulation(SimulationConfig config)
-    : config_(config)
-{
-}
+GameSimulation::GameSimulation(SimulationConfig config) : config_(config) {}
 
-bool GameSimulation::Submit(const LoginCommand& command)
-{
+bool GameSimulation::Submit(const LoginCommand& command) {
     if (playerByClient_.contains(command.header.clientId)) {
         return true;
     }
@@ -32,15 +27,12 @@ bool GameSimulation::Submit(const LoginCommand& command)
     lastAcceptedSequence_[command.header.clientId] = command.header.sequence;
 
     const auto spawn = SpawnTransformForClient(command.header.clientId);
-    [[maybe_unused]] const auto createdPlayerId = CreatePlayer(
-        command.header.clientId,
-        spawn.x,
-        spawn.y);
+    [[maybe_unused]] const auto createdPlayerId =
+        CreatePlayer(command.header.clientId, spawn.x, spawn.y);
     return true;
 }
 
-bool GameSimulation::Submit(const ClientInputPacket& packet)
-{
+bool GameSimulation::Submit(const ClientInputPacket& packet) {
     const auto playerIt = playerByClient_.find(packet.header.clientId);
     if (playerIt == playerByClient_.end()) {
         return false;
@@ -56,8 +48,7 @@ bool GameSimulation::Submit(const ClientInputPacket& packet)
     return true;
 }
 
-void GameSimulation::TickFixed()
-{
+void GameSimulation::TickFixed() {
     ++tick_;
     timeMs_ += config_.tickDurationMs;
 
@@ -67,8 +58,7 @@ void GameSimulation::TickFixed()
     ProcessRespawns();
 }
 
-void GameSimulation::ReplayLocalInputsForPrediction(const std::vector<ClientInputPacket>& inputs)
-{
+void GameSimulation::ReplayLocalInputsForPrediction(const std::vector<ClientInputPacket>& inputs) {
     for (const auto& input : inputs) {
         const auto player = PlayerEntityForClient(input.header.clientId);
         if (!player.has_value()) {
@@ -88,26 +78,30 @@ void GameSimulation::ReplayLocalInputsForPrediction(const std::vector<ClientInpu
     }
 }
 
-SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId, SnapshotId snapshotId, SnapshotId baselineId) const
-{
+SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId,
+                                          SnapshotId snapshotId,
+                                          SnapshotId baselineId) const {
     SnapshotDTO snapshot{};
     snapshot.snapshotId = snapshotId;
     snapshot.baselineId = baselineId;
     snapshot.serverTick = tick_;
     snapshot.serverTimeMs = timeMs_;
 
-    if (const auto last = lastAcceptedSequence_.find(observerClientId); last != lastAcceptedSequence_.end()) {
+    if (const auto last = lastAcceptedSequence_.find(observerClientId);
+        last != lastAcceptedSequence_.end()) {
         snapshot.ackedInputSequence = last->second;
     }
 
     std::optional<ChunkCoord> observerChunk{};
-    if (const auto observerEntityId = PlayerEntityForClient(observerClientId); observerEntityId.has_value()) {
+    if (const auto observerEntityId = PlayerEntityForClient(observerClientId);
+        observerEntityId.has_value()) {
         if (const auto movement = MovementForEntity(*observerEntityId); movement.has_value()) {
             observerChunk = ChunkForPosition(config_.map, movement->x, movement->y);
         }
     }
 
-    const auto view = registry_.view<NetworkIdentityComponent, TransformComponent, VelocityComponent>();
+    const auto view =
+        registry_.view<NetworkIdentityComponent, TransformComponent, VelocityComponent>();
     for (const auto entity : view) {
         const auto& identity = view.get<NetworkIdentityComponent>(entity);
         const auto& transform = view.get<TransformComponent>(entity);
@@ -145,14 +139,16 @@ SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId, SnapshotId 
             combat.maxHealth = player->maxHealth;
             combat.defeated = player->defeated;
             combat.respawnAtMs = player->respawnAtMs;
-            if (const auto* weapon = registry_.try_get<WeaponStateComponent>(entity); weapon != nullptr) {
+            if (const auto* weapon = registry_.try_get<WeaponStateComponent>(entity);
+                weapon != nullptr) {
                 combat.weaponType = weapon->type;
                 combat.weaponWarming = weapon->warming;
                 combat.weaponWarmupCompletesAtMs = weapon->warmupCompletesAtMs;
             }
             state.combat = combat;
             state.replication.kind = ReplicatedEntityKind::Player;
-        } else if (const auto* projectile = registry_.try_get<ProjectileComponent>(entity); projectile != nullptr) {
+        } else if (const auto* projectile = registry_.try_get<ProjectileComponent>(entity);
+                   projectile != nullptr) {
             CombatStateDTO combat{};
             combat.entityId = identity.id;
             combat.weaponType = projectile->sourceWeapon;
@@ -160,7 +156,8 @@ SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId, SnapshotId 
             combat.projectileOwnerId = projectile->ownerId;
             state.combat = combat;
             state.replication.kind = ReplicatedEntityKind::Projectile;
-            state.replication.priority = BetterPriority(state.replication.priority, SnapshotPriority::High);
+            state.replication.priority =
+                BetterPriority(state.replication.priority, SnapshotPriority::High);
         }
 
         snapshot.entities.push_back(std::move(state));
@@ -169,8 +166,7 @@ SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId, SnapshotId 
     return snapshot;
 }
 
-void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localClientId)
-{
+void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localClientId) {
     std::unordered_set<NetworkEntityId> seenEntities{};
 
     for (const auto& state : snapshot.entities) {
@@ -191,16 +187,15 @@ void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localCl
         const auto oldX = transform.x;
         const auto oldY = transform.y;
         const auto ownedByLocalPlayer = state.replication.ownerClientId == localClientId &&
-            state.replication.kind == ReplicatedEntityKind::Player;
+                                        state.replication.kind == ReplicatedEntityKind::Player;
 
         if (!isNewEntity && ownedByLocalPlayer && registry_.all_of<PredictedTag>(entity) &&
             (transform.x != state.movement.x || transform.y != state.movement.y)) {
-            QueueEvent(LocalPredictionCorrected{
-                state.movement.entityId,
-                transform.x,
-                transform.y,
-                state.movement.x,
-                state.movement.y});
+            QueueEvent(LocalPredictionCorrected{state.movement.entityId,
+                                                transform.x,
+                                                transform.y,
+                                                state.movement.x,
+                                                state.movement.y});
         }
 
         transform.x = state.movement.x;
@@ -210,8 +205,10 @@ void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localCl
         aim.x = state.movement.aimX;
         aim.y = state.movement.aimY;
 
-        registry_.emplace_or_replace<OwnedByPlayerComponent>(entity, state.replication.ownerClientId);
-        registry_.emplace_or_replace<NetworkReplicationComponent>(entity, NetworkReplicationMode::AreaOfInterest);
+        registry_.emplace_or_replace<OwnedByPlayerComponent>(entity,
+                                                             state.replication.ownerClientId);
+        registry_.emplace_or_replace<NetworkReplicationComponent>(
+            entity, NetworkReplicationMode::AreaOfInterest);
 
         if (state.replication.kind == ReplicatedEntityKind::Player) {
             auto& player = registry_.get_or_emplace<PlayerComponent>(entity);
@@ -233,11 +230,14 @@ void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localCl
             }
         } else {
             auto& projectile = registry_.get_or_emplace<ProjectileComponent>(entity);
-            projectile.ownerId = state.combat.has_value() ? state.combat->projectileOwnerId : kInvalidNetworkEntity;
+            projectile.ownerId =
+                state.combat.has_value() ? state.combat->projectileOwnerId : kInvalidNetworkEntity;
             projectile.spawnedAtMs = snapshot.serverTimeMs;
-            projectile.sourceWeapon = state.combat.has_value() ? state.combat->weaponType : WeaponType::None;
+            projectile.sourceWeapon =
+                state.combat.has_value() ? state.combat->weaponType : WeaponType::None;
             const auto* weapon = FindWeaponDefinition(config_.weapons, projectile.sourceWeapon);
-            projectile.expiresAtMs = snapshot.serverTimeMs +
+            projectile.expiresAtMs =
+                snapshot.serverTimeMs +
                 (weapon != nullptr ? weapon->projectileLifetimeMs : TimestampMs{});
         }
 
@@ -288,28 +288,25 @@ void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localCl
         entityByNetworkId_.erase(entityId);
     }
 
-    QueueEvent(SnapshotApplied{snapshot.snapshotId, snapshot.baselineId, snapshot.ackedInputSequence});
+    QueueEvent(
+        SnapshotApplied{snapshot.snapshotId, snapshot.baselineId, snapshot.ackedInputSequence});
 }
 
-EventList GameSimulation::DrainEvents()
-{
+EventList GameSimulation::DrainEvents() {
     EventList drained{};
     drained.swap(events_);
     return drained;
 }
 
-Tick GameSimulation::CurrentTick() const noexcept
-{
+Tick GameSimulation::CurrentTick() const noexcept {
     return tick_;
 }
 
-TimestampMs GameSimulation::ServerTimeMs() const noexcept
-{
+TimestampMs GameSimulation::ServerTimeMs() const noexcept {
     return timeMs_;
 }
 
-std::optional<NetworkEntityId> GameSimulation::PlayerEntityForClient(ClientId clientId) const
-{
+std::optional<NetworkEntityId> GameSimulation::PlayerEntityForClient(ClientId clientId) const {
     const auto found = playerByClient_.find(clientId);
     if (found == playerByClient_.end()) {
         return std::nullopt;
@@ -318,11 +315,11 @@ std::optional<NetworkEntityId> GameSimulation::PlayerEntityForClient(ClientId cl
     return found->second;
 }
 
-std::optional<MovementStateDTO> GameSimulation::MovementForEntity(NetworkEntityId entityId) const
-{
+std::optional<MovementStateDTO> GameSimulation::MovementForEntity(NetworkEntityId entityId) const {
     const auto entity = EntityFor(entityId);
     if (entity == entt::null ||
-        !registry_.all_of<NetworkIdentityComponent, TransformComponent, VelocityComponent>(entity)) {
+        !registry_.all_of<NetworkIdentityComponent, TransformComponent, VelocityComponent>(
+            entity)) {
         return std::nullopt;
     }
 
@@ -344,39 +341,32 @@ std::optional<MovementStateDTO> GameSimulation::MovementForEntity(NetworkEntityI
     return state;
 }
 
-std::size_t GameSimulation::EntityCount() const noexcept
-{
+std::size_t GameSimulation::EntityCount() const noexcept {
     return entityByNetworkId_.size();
 }
 
-entt::registry& GameSimulation::Registry() noexcept
-{
+entt::registry& GameSimulation::Registry() noexcept {
     return registry_;
 }
 
-const entt::registry& GameSimulation::Registry() const noexcept
-{
+const entt::registry& GameSimulation::Registry() const noexcept {
     return registry_;
 }
 
-NetworkEntityId GameSimulation::AllocateNetworkId()
-{
+NetworkEntityId GameSimulation::AllocateNetworkId() {
     const auto allocated = nextNetworkId_;
     ++nextNetworkId_.value;
     return allocated;
 }
 
-TransformComponent GameSimulation::SpawnTransformForClient(ClientId clientId) const
-{
+TransformComponent GameSimulation::SpawnTransformForClient(ClientId clientId) const {
     const auto tileX = 10 + static_cast<std::int32_t>(clientId % 20U);
     const auto tileY = 10 + static_cast<std::int32_t>((clientId / 20U) % 20U);
-    return TransformComponent{
-        PixelsToFixed(tileX * config_.map.tileSizePixels),
-        PixelsToFixed(tileY * config_.map.tileSizePixels)};
+    return TransformComponent{PixelsToFixed(tileX * config_.map.tileSizePixels),
+                              PixelsToFixed(tileY * config_.map.tileSizePixels)};
 }
 
-NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y)
-{
+NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y) {
     const auto entity = registry_.create();
     const auto networkId = AllocateNetworkId();
 
@@ -385,8 +375,7 @@ NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y
     registry_.emplace<VelocityComponent>(entity);
     registry_.emplace<AimComponent>(entity);
     registry_.emplace<PlayerComponent>(
-        entity,
-        PlayerComponent{clientId, config_.maxPlayerHealth, config_.maxPlayerHealth});
+        entity, PlayerComponent{clientId, config_.maxPlayerHealth, config_.maxPlayerHealth});
     registry_.emplace<WeaponStateComponent>(entity, WeaponStateComponent{config_.defaultWeapon});
     registry_.emplace<OwnedByPlayerComponent>(entity, clientId);
     registry_.emplace<NetworkReplicationComponent>(entity, NetworkReplicationMode::AreaOfInterest);
@@ -404,14 +393,12 @@ NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y
     return networkId;
 }
 
-entt::entity GameSimulation::EntityFor(NetworkEntityId entityId) const
-{
+entt::entity GameSimulation::EntityFor(NetworkEntityId entityId) const {
     const auto found = entityByNetworkId_.find(entityId);
     return found == entityByNetworkId_.end() ? entt::null : found->second;
 }
 
-void GameSimulation::QueueEvent(DomainEvent event)
-{
+void GameSimulation::QueueEvent(DomainEvent event) {
     events_.push_back(std::move(event));
 }
 

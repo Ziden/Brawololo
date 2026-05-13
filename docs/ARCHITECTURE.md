@@ -11,14 +11,14 @@ Simulation time and render time are separate. The simulation advances in fixed t
 `NetworkClock` maps local render time to server time. The protocol now has explicit `TimeSyncRequest` and `TimeSyncResponse` DTOs on a `TimeSync` channel; sessions can exchange those packets without the simulation, Raylib view, or transport implementation knowing the byte-level format.
 
 ## Game Logic Contract
-`GameLogic` accepts pure-data commands and emits domain events. UI and rendering code should react to specific events such as `PlayerSpawned`, `WeaponWarmupStarted`, `ProjectileSpawned`, and `LocalPredictionCorrected`; it should not depend on a generic component-changed event stream.
+`GameLogic` accepts pure-data commands and emits domain events. UI and rendering code should react to specific events such as `PlayerSpawned`, `WeaponWarmupStarted`, `ProjectileSpawned`, `PlayerDamaged`, `PlayerDied`, `PlayerRespawned`, and `LocalPredictionCorrected`; it should not depend on a generic component-changed event stream.
 
 `NetworkEventDTO` is the network-facing event model for reliable event delivery. It is derived from selected domain events and converted back into domain events on the client, so UI code still reacts to the same domain vocabulary without learning transport details.
 
 The simulation facade remains `GameSimulation`, but implementation is split by responsibility:
 - `Simulation.cpp` owns the public API, connection/input admission, entity identity maps, snapshot build/apply, and fixed-tick orchestration.
 - `SimulationMovement.cpp` owns input intent, acceleration, fixed-point movement, friction, and map clamping.
-- `SimulationCombat.cpp` owns weapon warmup completion, server-owned projectile spawning, projectile movement, hit checks, and combat replication priority.
+- `SimulationCombat.cpp` owns weapon warmup completion, server-owned projectile spawning, projectile movement, hit checks, damage, death, respawn, and combat replication priority.
 
 Weapons are data-driven through `WeaponDefinition` and `WeaponDefinitionTable`. `WeaponStateComponent` stores the currently equipped weapon and generic warmup state; bow is the default weapon definition rather than a hard-coded one-off component. `BowComponent` remains only as a compatibility alias for existing code/tests while new code should prefer `WeaponStateComponent`.
 
@@ -49,7 +49,7 @@ Message classes are mapped to explicit channels:
 
 All envelopes carry a protocol version and are validated before transport delivery or protocol pumping. The current schema reserves payload limits, channel/message compatibility checks, and version rejection as first-class behavior before a byte-level wire format is finalized.
 
-`LoopbackTransport` is the concrete same-process implementation for tests and fast iteration. It can optionally apply deterministic packet loss and delayed delivery through `LoopbackNetworkConditions`, giving tests a local way to exercise stale, missing, and out-of-order envelopes without depending on a real network stack. `KcpRtcTransport` is the integration seam for KCP over libdatachannel/WebRTC data channels.
+`LoopbackTransport` is the concrete same-process point-to-point implementation for tests and fast iteration. It can optionally apply deterministic packet loss and delayed delivery through `LoopbackNetworkConditions`, giving tests a local way to exercise stale, missing, and out-of-order envelopes without depending on a real network stack. `MultiClientLoopbackTransport` adds peer-addressed routing so multiple `RemoteClientSession`s can share one `ServerNetworkHost` without leaking client routing into gameplay code. `KcpRtcTransport` is the integration seam for KCP over libdatachannel/WebRTC data channels.
 
 `ITransport` exposes lifecycle and diagnostics: `Connect`, `Update`, `Close`, state, last error, and envelope/byte stats. Concrete transports should reject invalid envelopes and report `TransportError` instead of letting protocol problems leak into gameplay code.
 
@@ -70,11 +70,14 @@ The client layer is split into clear seams:
 - `IClientSession` hides whether snapshots/commands travel to an in-process server, a remote server, or a future browser transport. Session stats expose `ClientConnectionState` so UI/debug code can distinguish transport connection, awaiting spawn acknowledgement, and fully connected play state.
 - `FixedStepClock` owns simulation-step scheduling so render frame rate does not drive simulation time.
 - `ClientEventLog` keeps transient view feedback out of simulation and renderer internals.
+- `ClientVisualEffectLog` converts domain events into short-lived renderer-agnostic cosmetic effects. Predicted fire cues are explicitly visual-only; authoritative hit, death, respawn, and correction effects come from simulation/network events.
 - `ClientViewFrame` is renderer-agnostic view data built from runtime state, domain events, and presentation interpolation output.
 - `RaylibClientHost` owns the Raylib platform loop and composes frame timing, input, app ticks, view-model building, and rendering.
-- `RaylibGameView` samples Raylib input and owns the window frame; `RaylibSceneRenderer` draws entities and `RaylibDebugOverlay` draws HUD/event text. None of these should talk to server/runtime internals directly.
+- `RaylibGameView` samples Raylib input and owns the window frame; `RaylibSceneRenderer` draws the camera-follow tile-map scaffold, entities, health bars, warmup rings, defeated-state visuals, and cosmetic effects; `RaylibDebugOverlay` draws HUD/event text. None of these should talk to server/runtime internals directly.
 
-Same-process mode is implemented as `InProcessClientSession`, an adapter that wires `ServerNetworkHost` and `LoopbackTransport` through the same serialized protocol path used by real networking. Simulation-only dummy clients can exist inside the server without becoming network clients that receive snapshots. The bridge must not become a second client implementation.
+Same-process mode is implemented as `InProcessClientSession`, an adapter that wires `ServerNetworkHost` and `LoopbackTransport` through the same serialized protocol path used by real networking. Simulation-only dummy clients can exist inside the server without becoming network clients that receive snapshots. `SimulationOnlyClientDriver` keeps this clean by submitting ordinary sequence-numbered `ClientInputPacket`s to `ServerRuntime` for those opponents. The bridge must not become a second client implementation.
+
+`TwoClientSmoke` is the non-visual real-client workflow check. It composes two `ClientApplication` instances, two `RemoteClientSession`s, `MultiClientLoopbackTransport`, and one `ServerNetworkHost`; it does not bypass protocol pumping or use simulation-only clients.
 
 ## Server Shell
 `ServerApplication` is the headless server shell. It owns transport lifecycle, constructs `ServerNetworkHost`, advances fixed server ticks, exposes server stats, and supports graceful shutdown through `RequestStop`. The `Server` executable should stay a composition entrypoint around this shell rather than talking directly to `ServerRuntime`.
@@ -83,4 +86,8 @@ Same-process mode is implemented as `InProcessClientSession`, an adapter that wi
 
 `ServerNetworkHostConfig::snapshotSendIntervalMs` controls per-client snapshot cadence. The default remains one snapshot per fixed tick, but the policy is now explicit and can be tuned independently of simulation tick rate.
 
-`ServerClientReplicationState` owns per-client replication data: acknowledged snapshot baseline, next snapshot send time, AOI interest tracker, and pending reliable event deliveries. `NetworkEventAckDTO` removes pending reliable events once the client confirms ingestion.
+`ServerClientReplicationState` owns per-client replication data: acknowledged snapshot baseline, next snapshot send time, AOI interest tracker, and pending reliable event deliveries. `NetworkEventAckDTO` removes pending reliable events once the client confirms ingestion. Pending reliable events resend with bounded exponential backoff until ACKed or until their configured send cap is reached.
+
+`SimulationOnlyClientDriver` is a server-side test/play scaffold for local iteration. It reads authoritative simulation state only to produce normal pure-data commands for simulation-only clients, so its behavior exercises the same weapon warmup, projectile, damage, death, and respawn rules as any real client input.
+
+`NetworkEnvelope::peerId` is transport routing metadata, not gameplay identity. Client commands still carry their own command headers, and server snapshots/events still target players by explicit DTO data; the peer id only lets multi-client transports route server responses to the right endpoint.

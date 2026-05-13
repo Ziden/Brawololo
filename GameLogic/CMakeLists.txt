@@ -3,6 +3,7 @@ add_library(GameLogic STATIC
     src/InterestManagement.cpp
     src/LagCompensation.cpp
     src/SnapshotBaselineCache.cpp
+    src/SnapshotDelta.cpp
     src/NetworkEvents.cpp
     src/ReplicationPlanner.cpp
     src/Serialization.cpp

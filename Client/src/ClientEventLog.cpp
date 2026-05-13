@@ -6,13 +6,9 @@
 namespace game::client {
 
 ClientEventLog::ClientEventLog(std::size_t maxEntries, float entryLifetimeSeconds)
-    : maxEntries_(maxEntries)
-    , entryLifetimeSeconds_(entryLifetimeSeconds)
-{
-}
+    : maxEntries_(maxEntries), entryLifetimeSeconds_(entryLifetimeSeconds) {}
 
-void ClientEventLog::Push(std::string line)
-{
+void ClientEventLog::Push(std::string line) {
     if (line.empty()) {
         return;
     }
@@ -23,30 +19,25 @@ void ClientEventLog::Push(std::string line)
     }
 }
 
-void ClientEventLog::PushMany(const std::vector<std::string>& lines)
-{
+void ClientEventLog::PushMany(const std::vector<std::string>& lines) {
     for (const auto& line : lines) {
         Push(line);
     }
 }
 
-void ClientEventLog::Update(float deltaSeconds)
-{
+void ClientEventLog::Update(float deltaSeconds) {
     for (auto& entry : entries_) {
         entry.secondsRemaining -= deltaSeconds;
     }
 
-    const auto expired = std::remove_if(
-        entries_.begin(),
-        entries_.end(),
-        [](const ClientEventLogEntry& entry) {
+    const auto expired =
+        std::remove_if(entries_.begin(), entries_.end(), [](const ClientEventLogEntry& entry) {
             return entry.secondsRemaining <= 0.0F;
         });
     entries_.erase(expired, entries_.end());
 }
 
-std::vector<std::string> ClientEventLog::Lines() const
-{
+std::vector<std::string> ClientEventLog::Lines() const {
     std::vector<std::string> lines{};
     lines.reserve(entries_.size());
     for (const auto& entry : entries_) {
@@ -55,10 +46,8 @@ std::vector<std::string> ClientEventLog::Lines() const
     return lines;
 }
 
-std::size_t ClientEventLog::Size() const noexcept
-{
+std::size_t ClientEventLog::Size() const noexcept {
     return entries_.size();
 }
 
 } // namespace game::client
-

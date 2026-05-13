@@ -10,14 +10,11 @@
 
 namespace test_support {
 
-inline void Expect(bool condition, std::string_view message)
-{
+inline void Expect(bool condition, std::string_view message) {
     EXPECT_TRUE(condition) << message;
 }
 
-template <typename T>
-bool ContainsEvent(const game::EventList& events)
-{
+template <typename T> bool ContainsEvent(const game::EventList& events) {
     for (const auto& event : events) {
         if (std::holds_alternative<T>(event)) {
             return true;
@@ -26,8 +23,9 @@ bool ContainsEvent(const game::EventList& events)
     return false;
 }
 
-inline game::EntityStateDTO TestEntity(game::NetworkEntityId entityId, game::ClientId ownerClientId, game::SnapshotPriority priority)
-{
+inline game::EntityStateDTO TestEntity(game::NetworkEntityId entityId,
+                                       game::ClientId ownerClientId,
+                                       game::SnapshotPriority priority) {
     game::EntityStateDTO entity{};
     entity.movement.entityId = entityId;
     entity.replication.entityId = entityId;

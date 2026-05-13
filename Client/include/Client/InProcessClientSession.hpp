@@ -3,6 +3,7 @@
 #include "Client/IClientSession.hpp"
 #include "Networking/LoopbackTransport.hpp"
 #include "Server/ServerNetworkHost.hpp"
+#include "Server/SimulationOnlyClientDriver.hpp"
 
 #include <memory>
 #include <vector>
@@ -11,6 +12,7 @@ namespace game::client {
 
 struct InProcessClientSessionConfig {
     std::vector<game::ClientId> extraServerClients{2};
+    bool enableScriptedServerClients{true};
 };
 
 class InProcessClientSession final : public IClientSession {
@@ -34,6 +36,7 @@ private:
     game::TimestampMs lastTickTimeMs_{};
     game::CommandSequence nextTimeSyncSequence_{1};
     game::EventList reliableEvents_{};
+    std::vector<game::server::SimulationOnlyClientDriver> simulationOnlyDrivers_{};
     ClientSessionStats stats_{};
     bool connected_{};
 };

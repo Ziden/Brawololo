@@ -4,10 +4,10 @@
 #include <iostream>
 #include <memory>
 
-int main()
-{
+int main() {
     auto session = std::make_unique<game::client::InProcessClientSession>();
-    game::client::ClientApplication app{std::move(session), game::client::ClientApplicationConfig{1}};
+    game::client::ClientApplication app{std::move(session),
+                                        game::client::ClientApplicationConfig{1}};
 
     if (!app.Connect(0)) {
         std::cerr << "Failed to initialize single-process bridge\n";
@@ -26,11 +26,7 @@ int main()
     }
 
     const auto stats = app.Stats();
-    std::cout << "Single-process bridge ran. Entities: "
-              << stats.entityCount
-              << ", snapshots applied: "
-              << stats.session.snapshotsApplied
-              << '\n';
+    std::cout << "Single-process bridge ran. Entities: " << stats.entityCount
+              << ", snapshots applied: " << stats.session.snapshotsApplied << '\n';
     return 0;
 }
-

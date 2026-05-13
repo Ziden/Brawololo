@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GameLogic/Types.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -53,50 +55,47 @@ enum class ProtocolError : std::uint8_t {
 struct ProtocolValidationResult {
     ProtocolError error{ProtocolError::None};
 
-    [[nodiscard]] constexpr bool Ok() const noexcept
-    {
+    [[nodiscard]] constexpr bool Ok() const noexcept {
         return error == ProtocolError::None;
     }
 };
 
-constexpr ChannelPolicy PolicyFor(NetworkChannel channel) noexcept
-{
+constexpr ChannelPolicy PolicyFor(NetworkChannel channel) noexcept {
     switch (channel) {
-    case NetworkChannel::MovementInput:
-        return {channel, Reliability::Unreliable};
-    case NetworkChannel::Snapshots:
-        return {channel, Reliability::UnreliableSequenced};
-    case NetworkChannel::TimeSync:
-        return {channel, Reliability::Unreliable};
-    case NetworkChannel::CombatEvents:
-    case NetworkChannel::LoginSpawn:
-    case NetworkChannel::ChatUi:
-        return {channel, Reliability::Reliable};
+        case NetworkChannel::MovementInput:
+            return {channel, Reliability::Unreliable};
+        case NetworkChannel::Snapshots:
+            return {channel, Reliability::UnreliableSequenced};
+        case NetworkChannel::TimeSync:
+            return {channel, Reliability::Unreliable};
+        case NetworkChannel::CombatEvents:
+        case NetworkChannel::LoginSpawn:
+        case NetworkChannel::ChatUi:
+            return {channel, Reliability::Reliable};
     }
 
     return {channel, Reliability::Reliable};
 }
 
-constexpr NetworkChannel ExpectedChannelFor(MessageClass messageClass) noexcept
-{
+constexpr NetworkChannel ExpectedChannelFor(MessageClass messageClass) noexcept {
     switch (messageClass) {
-    case MessageClass::ClientInput:
-        return NetworkChannel::MovementInput;
-    case MessageClass::Snapshot:
-    case MessageClass::SnapshotAck:
-        return NetworkChannel::Snapshots;
-    case MessageClass::CombatEvent:
-        return NetworkChannel::CombatEvents;
-    case MessageClass::LoginRequest:
-    case MessageClass::SpawnAccepted:
-    case MessageClass::InterestEvent:
-    case MessageClass::NetworkEventAck:
-        return NetworkChannel::LoginSpawn;
-    case MessageClass::ChatUi:
-        return NetworkChannel::ChatUi;
-    case MessageClass::TimeSyncRequest:
-    case MessageClass::TimeSyncResponse:
-        return NetworkChannel::TimeSync;
+        case MessageClass::ClientInput:
+            return NetworkChannel::MovementInput;
+        case MessageClass::Snapshot:
+        case MessageClass::SnapshotAck:
+            return NetworkChannel::Snapshots;
+        case MessageClass::CombatEvent:
+            return NetworkChannel::CombatEvents;
+        case MessageClass::LoginRequest:
+        case MessageClass::SpawnAccepted:
+        case MessageClass::InterestEvent:
+        case MessageClass::NetworkEventAck:
+            return NetworkChannel::LoginSpawn;
+        case MessageClass::ChatUi:
+            return NetworkChannel::ChatUi;
+        case MessageClass::TimeSyncRequest:
+        case MessageClass::TimeSyncResponse:
+            return NetworkChannel::TimeSync;
     }
 
     return NetworkChannel::ChatUi;
@@ -104,14 +103,14 @@ constexpr NetworkChannel ExpectedChannelFor(MessageClass messageClass) noexcept
 
 struct NetworkEnvelope {
     std::uint16_t protocolVersion{kProtocolVersion};
+    ClientId peerId{};
     NetworkChannel channel{};
     MessageClass messageClass{};
     std::uint32_t sequence{};
     std::vector<std::byte> payload{};
 };
 
-inline ProtocolValidationResult ValidateEnvelope(const NetworkEnvelope& envelope) noexcept
-{
+inline ProtocolValidationResult ValidateEnvelope(const NetworkEnvelope& envelope) noexcept {
     if (envelope.protocolVersion != kProtocolVersion) {
         return {ProtocolError::UnsupportedVersion};
     }

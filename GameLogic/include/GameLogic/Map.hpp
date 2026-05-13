@@ -19,8 +19,7 @@ struct ChunkCoord {
     std::int32_t x{};
     std::int32_t y{};
 
-    friend constexpr bool operator==(ChunkCoord left, ChunkCoord right) noexcept
-    {
+    friend constexpr bool operator==(ChunkCoord left, ChunkCoord right) noexcept {
         return left.x == right.x && left.y == right.y;
     }
 };
@@ -32,4 +31,3 @@ Fixed MapWidthFixed(const MapConfig& config);
 Fixed MapHeightFixed(const MapConfig& config);
 
 } // namespace game
-

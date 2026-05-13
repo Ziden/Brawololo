@@ -87,17 +87,16 @@ struct EntityLeftInterestEventDTO {
     ClientId observerClientId{};
 };
 
-using NetworkEventPayloadDTO = std::variant<
-    PlayerSpawnedEventDTO,
-    WeaponWarmupStartedEventDTO,
-    WeaponFiredEventDTO,
-    ProjectileSpawnedEventDTO,
-    HitConfirmedEventDTO,
-    PlayerDamagedEventDTO,
-    PlayerDiedEventDTO,
-    PlayerRespawnedEventDTO,
-    EntityEnteredInterestEventDTO,
-    EntityLeftInterestEventDTO>;
+using NetworkEventPayloadDTO = std::variant<PlayerSpawnedEventDTO,
+                                            WeaponWarmupStartedEventDTO,
+                                            WeaponFiredEventDTO,
+                                            ProjectileSpawnedEventDTO,
+                                            HitConfirmedEventDTO,
+                                            PlayerDamagedEventDTO,
+                                            PlayerDiedEventDTO,
+                                            PlayerRespawnedEventDTO,
+                                            EntityEnteredInterestEventDTO,
+                                            EntityLeftInterestEventDTO>;
 
 struct NetworkEventDTO {
     NetworkEventId eventId{};
@@ -113,11 +112,10 @@ struct NetworkEventAckDTO {
 };
 
 [[nodiscard]] NetworkEventKind KindForNetworkEvent(const NetworkEventDTO& event) noexcept;
-[[nodiscard]] std::optional<NetworkEventDTO> ToNetworkEventDTO(
-    NetworkEventId eventId,
-    Tick serverTick,
-    TimestampMs serverTimeMs,
-    const DomainEvent& event);
+[[nodiscard]] std::optional<NetworkEventDTO> ToNetworkEventDTO(NetworkEventId eventId,
+                                                               Tick serverTick,
+                                                               TimestampMs serverTimeMs,
+                                                               const DomainEvent& event);
 [[nodiscard]] std::optional<DomainEvent> ToDomainEvent(const NetworkEventDTO& event);
 
 } // namespace game

@@ -2,6 +2,7 @@ add_library(ServerCore STATIC
     src/ServerApplication.cpp
     src/ServerNetworkHost.cpp
     src/ServerRuntime.cpp
+    src/SimulationOnlyClientDriver.cpp
 )
 
 target_include_directories(ServerCore

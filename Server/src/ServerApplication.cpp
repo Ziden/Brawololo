@@ -4,19 +4,15 @@
 
 namespace game::server {
 
-ServerApplication::ServerApplication(std::unique_ptr<game::net::ITransport> transport, ServerApplicationConfig config)
-    : transport_(std::move(transport))
-    , config_(config)
-{
-}
+ServerApplication::ServerApplication(std::unique_ptr<game::net::ITransport> transport,
+                                     ServerApplicationConfig config)
+    : transport_(std::move(transport)), config_(config) {}
 
-ServerApplication::~ServerApplication()
-{
+ServerApplication::~ServerApplication() {
     RequestStop();
 }
 
-bool ServerApplication::Start()
-{
+bool ServerApplication::Start() {
     if (!transport_) {
         return false;
     }
@@ -30,16 +26,14 @@ bool ServerApplication::Start()
     return true;
 }
 
-void ServerApplication::RequestStop()
-{
+void ServerApplication::RequestStop() {
     running_ = false;
     if (transport_) {
         transport_->Close();
     }
 }
 
-void ServerApplication::TickOnce(game::TimestampMs nowMs)
-{
+void ServerApplication::TickOnce(game::TimestampMs nowMs) {
     if (!running_ || !transport_ || !networkHost_) {
         return;
     }
@@ -50,20 +44,17 @@ void ServerApplication::TickOnce(game::TimestampMs nowMs)
     ++ticksRun_;
 }
 
-void ServerApplication::RunForTicks(std::size_t tickCount, game::TimestampMs startTimeMs)
-{
+void ServerApplication::RunForTicks(std::size_t tickCount, game::TimestampMs startTimeMs) {
     for (std::size_t index = 0; index < tickCount && running_; ++index) {
         TickOnce(startTimeMs + static_cast<game::TimestampMs>(index) * config_.tickDurationMs);
     }
 }
 
-bool ServerApplication::IsRunning() const noexcept
-{
+bool ServerApplication::IsRunning() const noexcept {
     return running_;
 }
 
-ServerApplicationStats ServerApplication::Stats() const noexcept
-{
+ServerApplicationStats ServerApplication::Stats() const noexcept {
     ServerApplicationStats stats{};
     stats.ticksRun = ticksRun_;
     stats.running = running_;
@@ -73,13 +64,11 @@ ServerApplicationStats ServerApplication::Stats() const noexcept
     return stats;
 }
 
-ServerNetworkHost* ServerApplication::NetworkHost() noexcept
-{
+ServerNetworkHost* ServerApplication::NetworkHost() noexcept {
     return networkHost_.get();
 }
 
-const ServerNetworkHost* ServerApplication::NetworkHost() const noexcept
-{
+const ServerNetworkHost* ServerApplication::NetworkHost() const noexcept {
     return networkHost_.get();
 }
 

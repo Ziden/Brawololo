@@ -27,28 +27,25 @@ struct WeaponDefinition {
 
 using WeaponDefinitionTable = std::array<WeaponDefinition, kWeaponTypeCount>;
 
-[[nodiscard]] constexpr WeaponDefinition DefaultWeaponDefinition(WeaponType type) noexcept
-{
+[[nodiscard]] constexpr WeaponDefinition DefaultWeaponDefinition(WeaponType type) noexcept {
     switch (type) {
-    case WeaponType::Bow:
-        return WeaponDefinition{WeaponType::Bow, 300, PixelsToFixed(900), 2000, 35, true};
-    case WeaponType::None:
-        return WeaponDefinition{};
+        case WeaponType::Bow:
+            return WeaponDefinition{WeaponType::Bow, 300, PixelsToFixed(900), 2000, 35, true};
+        case WeaponType::None:
+            return WeaponDefinition{};
     }
 
     return WeaponDefinition{};
 }
 
-[[nodiscard]] constexpr WeaponDefinitionTable DefaultWeaponDefinitions() noexcept
-{
+[[nodiscard]] constexpr WeaponDefinitionTable DefaultWeaponDefinitions() noexcept {
     return {
         DefaultWeaponDefinition(WeaponType::None),
         DefaultWeaponDefinition(WeaponType::Bow),
     };
 }
 
-[[nodiscard]] const WeaponDefinition* FindWeaponDefinition(
-    const WeaponDefinitionTable& definitions,
-    WeaponType type) noexcept;
+[[nodiscard]] const WeaponDefinition* FindWeaponDefinition(const WeaponDefinitionTable& definitions,
+                                                           WeaponType type) noexcept;
 
 } // namespace game

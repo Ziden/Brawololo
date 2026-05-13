@@ -27,7 +27,8 @@ public:
     void Store(ClientId clientId, SnapshotDTO snapshot);
     [[nodiscard]] std::optional<SnapshotDTO> Find(ClientId clientId, SnapshotId snapshotId) const;
     [[nodiscard]] std::optional<SnapshotId> LatestBaselineId(ClientId clientId) const;
-    [[nodiscard]] SnapshotBaselineDecision Decide(ClientId clientId, SnapshotId requestedBaselineId) const;
+    [[nodiscard]] SnapshotBaselineDecision Decide(ClientId clientId,
+                                                  SnapshotId requestedBaselineId) const;
     [[nodiscard]] std::size_t BaselineCount(ClientId clientId) const;
     void Clear(ClientId clientId);
 
@@ -37,4 +38,3 @@ private:
 };
 
 } // namespace game
-

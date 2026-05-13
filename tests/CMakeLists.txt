@@ -20,3 +20,7 @@ target_link_libraries(ScaffoldTests
 scaffold_apply_common_options(ScaffoldTests)
 
 gtest_discover_tests(ScaffoldTests)
+
+if(TARGET TwoClientSmoke)
+    add_test(NAME Smoke.TwoClient COMMAND TwoClientSmoke)
+endif()

@@ -17,7 +17,8 @@ namespace game::client {
 class InterpolationBuffer {
 public:
     void Push(game::SnapshotDTO snapshot);
-    [[nodiscard]] std::optional<game::SnapshotDTO> SampleAt(game::TimestampMs serverRenderTimeMs) const;
+    [[nodiscard]] std::optional<game::SnapshotDTO>
+    SampleAt(game::TimestampMs serverRenderTimeMs) const;
     [[nodiscard]] std::size_t Size() const noexcept;
 
 private:
@@ -30,7 +31,8 @@ public:
     explicit ClientRuntime(game::ClientId localClientId, game::SimulationConfig config = {});
 
     [[nodiscard]] bool ConnectLocal(game::TimestampMs localTimeMs = 0);
-    [[nodiscard]] game::ClientInputPacket QueueInput(game::InputFrame input, game::TimestampMs localTimeMs);
+    [[nodiscard]] game::ClientInputPacket QueueInput(game::InputFrame input,
+                                                     game::TimestampMs localTimeMs);
     void TickSimulation();
     void ApplyServerSnapshot(const game::SnapshotDTO& snapshot);
     void RecordTimeSyncSample(const game::TimeSyncSample& sample);

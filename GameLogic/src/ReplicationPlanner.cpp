@@ -6,44 +6,38 @@
 namespace game {
 namespace {
 
-std::uint8_t PriorityRank(SnapshotPriority priority)
-{
+std::uint8_t PriorityRank(SnapshotPriority priority) {
     switch (priority) {
-    case SnapshotPriority::High:
-        return 3;
-    case SnapshotPriority::Medium:
-        return 2;
-    case SnapshotPriority::Low:
-        return 1;
+        case SnapshotPriority::High:
+            return 3;
+        case SnapshotPriority::Medium:
+            return 2;
+        case SnapshotPriority::Low:
+            return 1;
     }
 
     return 0;
 }
 
-void CountPriority(ReplicationPlannerStats& stats, SnapshotPriority priority)
-{
+void CountPriority(ReplicationPlannerStats& stats, SnapshotPriority priority) {
     switch (priority) {
-    case SnapshotPriority::High:
-        ++stats.highPriorityCount;
-        break;
-    case SnapshotPriority::Medium:
-        ++stats.mediumPriorityCount;
-        break;
-    case SnapshotPriority::Low:
-        ++stats.lowPriorityCount;
-        break;
+        case SnapshotPriority::High:
+            ++stats.highPriorityCount;
+            break;
+        case SnapshotPriority::Medium:
+            ++stats.mediumPriorityCount;
+            break;
+        case SnapshotPriority::Low:
+            ++stats.lowPriorityCount;
+            break;
     }
 }
 
 } // namespace
 
-ReplicationPlanner::ReplicationPlanner(ReplicationPlannerConfig config)
-    : config_(config)
-{
-}
+ReplicationPlanner::ReplicationPlanner(ReplicationPlannerConfig config) : config_(config) {}
 
-PlannedSnapshot ReplicationPlanner::Plan(SnapshotDTO snapshot, ClientId observerClientId) const
-{
+PlannedSnapshot ReplicationPlanner::Plan(SnapshotDTO snapshot, ClientId observerClientId) const {
     PlannedSnapshot planned{};
     planned.stats.inputEntityCount = snapshot.entities.size();
 
@@ -76,7 +70,8 @@ PlannedSnapshot ReplicationPlanner::Plan(SnapshotDTO snapshot, ClientId observer
     }
 
     planned.stats.outputEntityCount = snapshot.entities.size();
-    planned.stats.droppedEntityCount = planned.stats.inputEntityCount - planned.stats.outputEntityCount;
+    planned.stats.droppedEntityCount =
+        planned.stats.inputEntityCount - planned.stats.outputEntityCount;
     for (const auto& entity : snapshot.entities) {
         CountPriority(planned.stats, entity.replication.priority);
     }

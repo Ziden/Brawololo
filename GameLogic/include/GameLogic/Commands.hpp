@@ -41,4 +41,3 @@ static_assert(std::is_trivially_copyable_v<InputFrame>);
 static_assert(std::is_trivially_copyable_v<ClientInputPacket>);
 
 } // namespace game
-

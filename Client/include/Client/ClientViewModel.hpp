@@ -22,6 +22,14 @@ enum class ViewAuthorityRole : std::uint8_t {
     Authoritative,
 };
 
+enum class ViewEffectKind : std::uint8_t {
+    PredictedFire,
+    AuthoritativeHit,
+    AuthoritativeDeath,
+    AuthoritativeRespawn,
+    PredictionCorrection,
+};
+
 struct ViewEntity {
     game::NetworkEntityId entityId{};
     game::ClientId ownerClientId{};
@@ -38,17 +46,26 @@ struct ViewEntity {
     bool defeated{};
 };
 
+struct ViewEffect {
+    ViewEffectKind kind{ViewEffectKind::PredictedFire};
+    game::NetworkEntityId entityId{};
+    game::Fixed x{};
+    game::Fixed y{};
+    std::int32_t amount{};
+    std::uint16_t progressPermille{};
+};
+
 struct ClientViewFrame {
     game::ClientId localClientId{};
     ClientApplicationStats stats{};
     PresentationFrame presentation{};
     std::vector<ViewEntity> entities{};
+    std::vector<ViewEffect> effects{};
     std::vector<std::string> eventLines{};
 };
 
-[[nodiscard]] ClientViewFrame BuildClientViewFrame(
-    const ClientRuntime& runtime,
-    const game::EventList& events,
-    const ClientApplicationStats& stats);
+[[nodiscard]] ClientViewFrame BuildClientViewFrame(const ClientRuntime& runtime,
+                                                   const game::EventList& events,
+                                                   const ClientApplicationStats& stats);
 
 } // namespace game::client

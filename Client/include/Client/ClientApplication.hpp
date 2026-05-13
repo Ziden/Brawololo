@@ -23,7 +23,8 @@ public:
     ClientApplication(std::unique_ptr<IClientSession> session, ClientApplicationConfig config = {});
 
     [[nodiscard]] bool Connect(game::TimestampMs nowMs);
-    [[nodiscard]] game::ClientInputPacket SubmitInput(game::InputFrame input, game::TimestampMs nowMs);
+    [[nodiscard]] game::ClientInputPacket SubmitInput(game::InputFrame input,
+                                                      game::TimestampMs nowMs);
     void TickFixed(game::TimestampMs nowMs);
     [[nodiscard]] game::EventList DrainEvents();
     [[nodiscard]] ClientApplicationStats Stats() const;
@@ -38,4 +39,3 @@ private:
 };
 
 } // namespace game::client
-

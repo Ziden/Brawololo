@@ -9,15 +9,15 @@ The architecture targets server-authoritative consistency, not cross-platform lo
 - `GameLogic` exposes a fixed-tick simulation API that accepts pure-data commands, advances simulation time, and emits specific domain events for UI/render reactions.
 - Commands are serializable data only. Command headers contain at least `clientId`, `sequence`, and `clientTimestampMs`.
 - Core input structures include `InputFrame` and `ClientInputPacket`.
-- Events are domain-specific, such as `PlayerSpawned`, `PlayerMoved`, `WeaponWarmupStarted`, `BowFired`, `ProjectileSpawned`, `HitConfirmed`, `EntityEnteredInterest`, `EntityLeftInterest`, `SnapshotApplied`, and `LocalPredictionCorrected`.
+- Events are domain-specific, such as `PlayerSpawned`, `PlayerMoved`, `WeaponWarmupStarted`, `BowFired`, `ProjectileSpawned`, `HitConfirmed`, `PlayerDamaged`, `PlayerDied`, `PlayerRespawned`, `EntityEnteredInterest`, `EntityLeftInterest`, `SnapshotApplied`, and `LocalPredictionCorrected`.
 - Snapshot and replication DTOs are ECS-independent: use `MovementStateDTO`, `CombatStateDTO`, and `ReplicationStateDTO` instead of serializing ECS component types directly.
 - Component data is represented in the wire model conceptually through DTOs, stable network entity IDs, and local EnTT mappings rather than raw ECS memory.
 
 ## Core Implementation
-- `GameLogic`: ECS components/systems, integer/fixed-point movement, command handlers, event queue, data-driven weapon definitions, network event DTOs, local prediction helpers, reconciliation helpers, serialization DTOs, map/chunk AOI, bow warmup, arrows, and server-authoritative projectile/combat rules.
-- `Client`: sequence-numbered `ClientInputPacket`s, snapshot acknowledgements, reliable-event acknowledgements, connection-state tracking, local prediction, render-time interpolation, event-driven view hooks, split Raylib scene/debug rendering, and local-only reconciliation replay.
-- `Server`: authoritative tick loop, command validation, input ack tracking, snapshot ack tracking, reliable event delivery tracking, per-client replication state, stale command rejection, lag-compensation history, server-owned arrows/hits, prioritized snapshots, per-client snapshot cadence, and chunk-filtered AOI replication for up to `256` players.
-- `Networking`: message classes and channels for movement/input, snapshots, combat events, login/spawn, interest events, time sync, and chat/UI. The first concrete transport is loopback with optional deterministic loss/delay conditions; the KCP/libdatachannel adapter is isolated behind `ITransport`.
+- `GameLogic`: ECS components/systems, integer/fixed-point movement, command handlers, event queue, data-driven weapon definitions, network event DTOs, local prediction helpers, reconciliation helpers, serialization DTOs, map/chunk AOI, bow warmup, arrows, damage/death/respawn, and server-authoritative projectile/combat rules.
+- `Client`: sequence-numbered `ClientInputPacket`s, snapshot acknowledgements, reliable-event acknowledgements, connection-state tracking, local prediction, render-time interpolation, event-driven view hooks, renderer-agnostic cosmetic combat effects, split Raylib scene/debug rendering, routed two-client smoke workflow, and local-only reconciliation replay.
+- `Server`: authoritative tick loop, command validation, input ack tracking, snapshot ack tracking, reliable event delivery tracking with bounded resend/backoff, per-client replication state, stale command rejection, lag-compensation history, server-owned arrows/hits, simulation-only test drivers, prioritized snapshots, per-client snapshot cadence, and chunk-filtered AOI replication for up to `256` players.
+- `Networking`: message classes and channels for movement/input, snapshots, combat events, login/spawn, interest events, time sync, and chat/UI. The first concrete transports are point-to-point loopback and peer-addressed multi-client loopback; the KCP/libdatachannel adapter is isolated behind `ITransport`.
 - `Time`: `NetworkClock`, `TimeSyncRequest`, and `TimeSyncResponse` support RTT estimates, client/server offset, interpolation delay, and client timestamp to server time mapping.
 - `Replication`: snapshots reserve `snapshotId`, `baselineId`, and delivery kind from day one, even when the first implementation sends full state.
 
@@ -35,6 +35,7 @@ The architecture targets server-authoritative consistency, not cross-platform lo
 - Snapshot prioritization is explicit: high priority for nearby players, combat, and projectiles; medium for movement; low for cosmetics and far entities.
 - Reliable network events are DTO-based and preserve the domain event vocabulary for UI reactions without exposing transport or ECS internals.
 - Reliable event acknowledgements are explicit so app-level delivery state can be tested independently of the eventual transport implementation.
+- Unacknowledged reliable events are resent on bounded exponential backoff until acknowledged.
 
 ## Test Plan
 - Unit tests cover pure command handling, domain event emission, fixed-point movement, bow warmup, projectile spawning, prediction tags, ownership metadata, serialization DTOs, chunk lookup, and AOI filtering.

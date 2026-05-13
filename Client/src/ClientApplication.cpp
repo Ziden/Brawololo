@@ -4,15 +4,11 @@
 
 namespace game::client {
 
-ClientApplication::ClientApplication(std::unique_ptr<IClientSession> session, ClientApplicationConfig config)
-    : config_(config)
-    , session_(std::move(session))
-    , runtime_(config_.localClientId)
-{
-}
+ClientApplication::ClientApplication(std::unique_ptr<IClientSession> session,
+                                     ClientApplicationConfig config)
+    : config_(config), session_(std::move(session)), runtime_(config_.localClientId) {}
 
-bool ClientApplication::Connect(game::TimestampMs nowMs)
-{
+bool ClientApplication::Connect(game::TimestampMs nowMs) {
     if (!session_) {
         return false;
     }
@@ -22,8 +18,8 @@ bool ClientApplication::Connect(game::TimestampMs nowMs)
     return runtimeConnected && sessionConnected;
 }
 
-game::ClientInputPacket ClientApplication::SubmitInput(game::InputFrame input, game::TimestampMs nowMs)
-{
+game::ClientInputPacket ClientApplication::SubmitInput(game::InputFrame input,
+                                                       game::TimestampMs nowMs) {
     auto packet = runtime_.QueueInput(input, nowMs);
     if (session_) {
         session_->SendInput(packet);
@@ -31,8 +27,7 @@ game::ClientInputPacket ClientApplication::SubmitInput(game::InputFrame input, g
     return packet;
 }
 
-void ClientApplication::TickFixed(game::TimestampMs nowMs)
-{
+void ClientApplication::TickFixed(game::TimestampMs nowMs) {
     runtime_.TickSimulation();
 
     if (session_) {
@@ -43,8 +38,7 @@ void ClientApplication::TickFixed(game::TimestampMs nowMs)
     ++fixedTick_;
 }
 
-game::EventList ClientApplication::DrainEvents()
-{
+game::EventList ClientApplication::DrainEvents() {
     auto events = runtime_.DrainEvents();
     if (!session_) {
         return events;
@@ -55,8 +49,7 @@ game::EventList ClientApplication::DrainEvents()
     return events;
 }
 
-ClientApplicationStats ClientApplication::Stats() const
-{
+ClientApplicationStats ClientApplication::Stats() const {
     ClientApplicationStats stats{};
     stats.fixedTick = fixedTick_;
     stats.entityCount = runtime_.Simulation().EntityCount();
@@ -67,15 +60,12 @@ ClientApplicationStats ClientApplication::Stats() const
     return stats;
 }
 
-ClientRuntime& ClientApplication::Runtime() noexcept
-{
+ClientRuntime& ClientApplication::Runtime() noexcept {
     return runtime_;
 }
 
-const ClientRuntime& ClientApplication::Runtime() const noexcept
-{
+const ClientRuntime& ClientApplication::Runtime() const noexcept {
     return runtime_;
 }
 
 } // namespace game::client
-

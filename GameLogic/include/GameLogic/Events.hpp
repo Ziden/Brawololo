@@ -97,20 +97,19 @@ struct LocalPredictionCorrected {
     Fixed authoritativeY{};
 };
 
-using DomainEvent = std::variant<
-    PlayerSpawned,
-    PlayerMoved,
-    WeaponWarmupStarted,
-    WeaponFired,
-    ProjectileSpawned,
-    HitConfirmed,
-    PlayerDamaged,
-    PlayerDied,
-    PlayerRespawned,
-    EntityEnteredInterest,
-    EntityLeftInterest,
-    SnapshotApplied,
-    LocalPredictionCorrected>;
+using DomainEvent = std::variant<PlayerSpawned,
+                                 PlayerMoved,
+                                 WeaponWarmupStarted,
+                                 WeaponFired,
+                                 ProjectileSpawned,
+                                 HitConfirmed,
+                                 PlayerDamaged,
+                                 PlayerDied,
+                                 PlayerRespawned,
+                                 EntityEnteredInterest,
+                                 EntityLeftInterest,
+                                 SnapshotApplied,
+                                 LocalPredictionCorrected>;
 
 using EventList = std::vector<DomainEvent>;
 

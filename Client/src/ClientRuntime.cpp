@@ -4,16 +4,15 @@
 
 namespace game::client {
 
-void InterpolationBuffer::Push(game::SnapshotDTO snapshot)
-{
+void InterpolationBuffer::Push(game::SnapshotDTO snapshot) {
     snapshots_.push_back(std::move(snapshot));
     while (snapshots_.size() > maxSnapshots_) {
         snapshots_.pop_front();
     }
 }
 
-std::optional<game::SnapshotDTO> InterpolationBuffer::SampleAt(game::TimestampMs serverRenderTimeMs) const
-{
+std::optional<game::SnapshotDTO>
+InterpolationBuffer::SampleAt(game::TimestampMs serverRenderTimeMs) const {
     std::optional<game::SnapshotDTO> result{};
     for (const auto& snapshot : snapshots_) {
         if (snapshot.serverTimeMs <= serverRenderTimeMs) {
@@ -23,22 +22,17 @@ std::optional<game::SnapshotDTO> InterpolationBuffer::SampleAt(game::TimestampMs
     return result;
 }
 
-std::size_t InterpolationBuffer::Size() const noexcept
-{
+std::size_t InterpolationBuffer::Size() const noexcept {
     return snapshots_.size();
 }
 
 ClientRuntime::ClientRuntime(game::ClientId localClientId, game::SimulationConfig config)
-    : localClientId_(localClientId)
-    , simulation_([&config] {
-        config.mode = game::SimulationMode::ClientPrediction;
-        return config;
-    }())
-{
-}
+    : localClientId_(localClientId), simulation_([&config] {
+          config.mode = game::SimulationMode::ClientPrediction;
+          return config;
+      }()) {}
 
-bool ClientRuntime::ConnectLocal(game::TimestampMs localTimeMs)
-{
+bool ClientRuntime::ConnectLocal(game::TimestampMs localTimeMs) {
     game::LoginCommand login{};
     login.header.clientId = localClientId_;
     login.header.sequence = 0;
@@ -46,8 +40,8 @@ bool ClientRuntime::ConnectLocal(game::TimestampMs localTimeMs)
     return simulation_.Submit(login);
 }
 
-game::ClientInputPacket ClientRuntime::QueueInput(game::InputFrame input, game::TimestampMs localTimeMs)
-{
+game::ClientInputPacket ClientRuntime::QueueInput(game::InputFrame input,
+                                                  game::TimestampMs localTimeMs) {
     game::ClientInputPacket packet{};
     packet.header.clientId = localClientId_;
     packet.header.sequence = nextSequence_++;
@@ -59,13 +53,11 @@ game::ClientInputPacket ClientRuntime::QueueInput(game::InputFrame input, game::
     return packet;
 }
 
-void ClientRuntime::TickSimulation()
-{
+void ClientRuntime::TickSimulation() {
     simulation_.TickFixed();
 }
 
-void ClientRuntime::ApplyServerSnapshot(const game::SnapshotDTO& snapshot)
-{
+void ClientRuntime::ApplyServerSnapshot(const game::SnapshotDTO& snapshot) {
     interpolation_.Push(snapshot);
     presentationInterpolator_.PushSnapshot(snapshot);
     simulation_.ApplySnapshot(snapshot, localClientId_);
@@ -74,48 +66,39 @@ void ClientRuntime::ApplyServerSnapshot(const game::SnapshotDTO& snapshot)
     simulation_.ReplayLocalInputsForPrediction(pendingInputs_.UnackedInputs());
 }
 
-void ClientRuntime::RecordTimeSyncSample(const game::TimeSyncSample& sample)
-{
+void ClientRuntime::RecordTimeSyncSample(const game::TimeSyncSample& sample) {
     clock_.RecordSample(sample);
 }
 
-game::EventList ClientRuntime::DrainEvents()
-{
+game::EventList ClientRuntime::DrainEvents() {
     return simulation_.DrainEvents();
 }
 
-game::ClientId ClientRuntime::LocalClientId() const noexcept
-{
+game::ClientId ClientRuntime::LocalClientId() const noexcept {
     return localClientId_;
 }
 
-const game::NetworkClock& ClientRuntime::Clock() const noexcept
-{
+const game::NetworkClock& ClientRuntime::Clock() const noexcept {
     return clock_;
 }
 
-const game::GameSimulation& ClientRuntime::Simulation() const noexcept
-{
+const game::GameSimulation& ClientRuntime::Simulation() const noexcept {
     return simulation_;
 }
 
-game::GameSimulation& ClientRuntime::Simulation() noexcept
-{
+game::GameSimulation& ClientRuntime::Simulation() noexcept {
     return simulation_;
 }
 
-const std::vector<game::ClientInputPacket>& ClientRuntime::UnackedInputs() const noexcept
-{
+const std::vector<game::ClientInputPacket>& ClientRuntime::UnackedInputs() const noexcept {
     return pendingInputs_.UnackedInputs();
 }
 
-const InterpolationBuffer& ClientRuntime::Interpolation() const noexcept
-{
+const InterpolationBuffer& ClientRuntime::Interpolation() const noexcept {
     return interpolation_;
 }
 
-const PresentationInterpolator& ClientRuntime::Presentation() const noexcept
-{
+const PresentationInterpolator& ClientRuntime::Presentation() const noexcept {
     return presentationInterpolator_;
 }
 

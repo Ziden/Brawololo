@@ -3,6 +3,7 @@ add_library(ClientCore STATIC
     src/ClientEventLog.cpp
     src/ClientProtocolPump.cpp
     src/ClientRuntime.cpp
+    src/ClientVisualEffectLog.cpp
     src/ClientViewModel.cpp
     src/FixedStepClock.cpp
     src/PendingInputHistory.cpp
@@ -54,4 +55,11 @@ if(TARGET ServerCore)
 
     target_link_libraries(SingleProcess PRIVATE ClientInProcess)
     scaffold_apply_common_options(SingleProcess)
+
+    add_executable(TwoClientSmoke
+        src/two_client_smoke_main.cpp
+    )
+
+    target_link_libraries(TwoClientSmoke PRIVATE ClientCore ServerCore)
+    scaffold_apply_common_options(TwoClientSmoke)
 endif()

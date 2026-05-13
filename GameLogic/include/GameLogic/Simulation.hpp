@@ -41,7 +41,8 @@ public:
     void TickFixed();
     void ReplayLocalInputsForPrediction(const std::vector<ClientInputPacket>& inputs);
 
-    [[nodiscard]] SnapshotDTO BuildSnapshot(ClientId observerClientId, SnapshotId snapshotId, SnapshotId baselineId) const;
+    [[nodiscard]] SnapshotDTO
+    BuildSnapshot(ClientId observerClientId, SnapshotId snapshotId, SnapshotId baselineId) const;
     void ApplySnapshot(const SnapshotDTO& snapshot, ClientId localClientId);
 
     [[nodiscard]] EventList DrainEvents();
@@ -58,11 +59,10 @@ private:
     [[nodiscard]] NetworkEntityId AllocateNetworkId();
     [[nodiscard]] TransformComponent SpawnTransformForClient(ClientId clientId) const;
     [[nodiscard]] NetworkEntityId CreatePlayer(ClientId clientId, Fixed x, Fixed y);
-    [[nodiscard]] NetworkEntityId CreateProjectile(
-        NetworkEntityId ownerId,
-        const TransformComponent& ownerTransform,
-        const AimComponent& aim,
-        const WeaponDefinition& weapon);
+    [[nodiscard]] NetworkEntityId CreateProjectile(NetworkEntityId ownerId,
+                                                   const TransformComponent& ownerTransform,
+                                                   const AimComponent& aim,
+                                                   const WeaponDefinition& weapon);
     [[nodiscard]] entt::entity EntityFor(NetworkEntityId entityId) const;
 
     void QueueEvent(DomainEvent event);
@@ -73,7 +73,8 @@ private:
     void ProcessProjectiles();
     void ProcessRespawns();
     void ClampToMap(TransformComponent& transform) const;
-    [[nodiscard]] SnapshotPriority PriorityForEntity(ClientId observerClientId, entt::entity entity) const;
+    [[nodiscard]] SnapshotPriority PriorityForEntity(ClientId observerClientId,
+                                                     entt::entity entity) const;
 
     SimulationConfig config_{};
     entt::registry registry_{};
