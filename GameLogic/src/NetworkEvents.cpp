@@ -60,6 +60,28 @@ std::optional<NetworkEventDTO> ToNetworkEventDTO(
         return dto;
     }
 
+    if (const auto* damaged = std::get_if<PlayerDamaged>(&event); damaged != nullptr) {
+        dto.payload = PlayerDamagedEventDTO{
+            damaged->entityId,
+            damaged->attackerId,
+            damaged->damage,
+            damaged->healthAfter};
+        return dto;
+    }
+
+    if (const auto* died = std::get_if<PlayerDied>(&event); died != nullptr) {
+        dto.payload = PlayerDiedEventDTO{died->entityId, died->attackerId, died->respawnAtMs};
+        return dto;
+    }
+
+    if (const auto* respawned = std::get_if<PlayerRespawned>(&event); respawned != nullptr) {
+        dto.payload = PlayerRespawnedEventDTO{
+            respawned->entityId,
+            respawned->x,
+            respawned->y};
+        return dto;
+    }
+
     if (const auto* entered = std::get_if<EntityEnteredInterest>(&event); entered != nullptr) {
         dto.payload = EntityEnteredInterestEventDTO{
             entered->entityId,
@@ -113,6 +135,24 @@ std::optional<DomainEvent> ToDomainEvent(const NetworkEventDTO& event)
             hit->targetId,
             hit->projectileId,
             hit->serverTimeMs};
+    }
+
+    if (const auto* damaged = std::get_if<PlayerDamagedEventDTO>(&event.payload);
+        damaged != nullptr) {
+        return PlayerDamaged{
+            damaged->entityId,
+            damaged->attackerId,
+            damaged->damage,
+            damaged->healthAfter};
+    }
+
+    if (const auto* died = std::get_if<PlayerDiedEventDTO>(&event.payload); died != nullptr) {
+        return PlayerDied{died->entityId, died->attackerId, died->respawnAtMs};
+    }
+
+    if (const auto* respawned = std::get_if<PlayerRespawnedEventDTO>(&event.payload);
+        respawned != nullptr) {
+        return PlayerRespawned{respawned->entityId, respawned->x, respawned->y};
     }
 
     if (const auto* entered = std::get_if<EntityEnteredInterestEventDTO>(&event.payload);

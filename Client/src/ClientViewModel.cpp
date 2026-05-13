@@ -56,8 +56,10 @@ void ApplyPresentationFrame(ClientViewFrame& frame)
             found->aimX = interpolated.aimX;
             found->aimY = interpolated.aimY;
             found->health = interpolated.health;
+            found->maxHealth = interpolated.maxHealth;
             found->weaponType = interpolated.weaponType;
             found->weaponWarming = interpolated.weaponWarming;
+            found->defeated = interpolated.defeated;
             continue;
         }
 
@@ -71,8 +73,10 @@ void ApplyPresentationFrame(ClientViewFrame& frame)
             interpolated.aimX,
             interpolated.aimY,
             interpolated.health,
+            interpolated.maxHealth,
             interpolated.weaponType,
-            interpolated.weaponWarming});
+            interpolated.weaponWarming,
+            interpolated.defeated});
     }
 }
 
@@ -96,6 +100,21 @@ std::string EventLine(const game::DomainEvent& event)
 
     if (const auto* hit = std::get_if<game::HitConfirmed>(&event); hit != nullptr) {
         return "Hit confirmed: " + std::to_string(hit->attackerId.value) + " -> " + std::to_string(hit->targetId.value);
+    }
+
+    if (const auto* damaged = std::get_if<game::PlayerDamaged>(&event); damaged != nullptr) {
+        return "Player damaged: entity " + std::to_string(damaged->entityId.value) +
+            " for " + std::to_string(damaged->damage) +
+            " hp, remaining " + std::to_string(damaged->healthAfter);
+    }
+
+    if (const auto* died = std::get_if<game::PlayerDied>(&event); died != nullptr) {
+        return "Player died: entity " + std::to_string(died->entityId.value) +
+            ", respawn at " + std::to_string(died->respawnAtMs) + "ms";
+    }
+
+    if (const auto* respawned = std::get_if<game::PlayerRespawned>(&event); respawned != nullptr) {
+        return "Player respawned: entity " + std::to_string(respawned->entityId.value);
     }
 
     if (const auto* corrected = std::get_if<game::LocalPredictionCorrected>(&event); corrected != nullptr) {
@@ -154,8 +173,10 @@ ClientViewFrame BuildClientViewFrame(
             aim.x,
             aim.y,
             player.health,
+            player.maxHealth,
             weapon.type,
-            weapon.warming});
+            weapon.warming,
+            player.defeated});
     }
 
     const auto projectiles = registry.view<
@@ -178,7 +199,9 @@ ClientViewFrame BuildClientViewFrame(
             1000,
             0,
             0,
+            0,
             game::WeaponType::None,
+            false,
             false});
     }
 

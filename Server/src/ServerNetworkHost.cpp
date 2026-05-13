@@ -269,6 +269,9 @@ void ServerNetworkHost::SendReliableEvent(game::ClientId clientId, const game::N
     case game::NetworkEventKind::BowFired:
     case game::NetworkEventKind::ProjectileSpawned:
     case game::NetworkEventKind::HitConfirmed:
+    case game::NetworkEventKind::PlayerDamaged:
+    case game::NetworkEventKind::PlayerDied:
+    case game::NetworkEventKind::PlayerRespawned:
         envelope.channel = game::NetworkChannel::CombatEvents;
         envelope.messageClass = game::MessageClass::CombatEvent;
         break;

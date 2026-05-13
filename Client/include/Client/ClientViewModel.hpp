@@ -32,8 +32,10 @@ struct ViewEntity {
     std::int16_t aimX{1000};
     std::int16_t aimY{};
     std::int32_t health{100};
+    std::int32_t maxHealth{100};
     game::WeaponType weaponType{game::WeaponType::None};
     bool weaponWarming{};
+    bool defeated{};
 };
 
 struct ClientViewFrame {

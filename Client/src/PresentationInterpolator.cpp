@@ -58,8 +58,10 @@ InterpolatedEntityState ToInterpolatedEntity(
 
     if (target.combat.has_value()) {
         entity.health = target.combat->health;
+        entity.maxHealth = target.combat->maxHealth;
         entity.weaponType = target.combat->weaponType;
         entity.weaponWarming = target.combat->weaponWarming;
+        entity.defeated = target.combat->defeated;
         entity.serverOwnedProjectile = target.combat->serverOwnedProjectile;
     }
 

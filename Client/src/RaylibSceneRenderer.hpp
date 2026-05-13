@@ -5,9 +5,12 @@
 namespace game::client {
 
 struct RaylibSceneRenderConfig {
-    float originX{460.0F};
-    float originY{260.0F};
-    float scale{0.08F};
+    int viewportWidth{1280};
+    int viewportHeight{720};
+    int tileSizePixels{128};
+    int mapWidthTiles{80};
+    int mapHeightTiles{80};
+    float zoom{1.0F};
 };
 
 void DrawRaylibScene(const ClientViewFrame& frame, RaylibSceneRenderConfig config = {});

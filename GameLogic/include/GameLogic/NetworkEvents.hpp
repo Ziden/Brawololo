@@ -14,6 +14,9 @@ enum class NetworkEventKind : std::uint8_t {
     BowFired,
     ProjectileSpawned,
     HitConfirmed,
+    PlayerDamaged,
+    PlayerDied,
+    PlayerRespawned,
     EntityEnteredInterest,
     EntityLeftInterest,
 };
@@ -55,6 +58,25 @@ struct HitConfirmedEventDTO {
     TimestampMs serverTimeMs{};
 };
 
+struct PlayerDamagedEventDTO {
+    NetworkEntityId entityId{};
+    NetworkEntityId attackerId{};
+    std::int32_t damage{};
+    std::int32_t healthAfter{};
+};
+
+struct PlayerDiedEventDTO {
+    NetworkEntityId entityId{};
+    NetworkEntityId attackerId{};
+    TimestampMs respawnAtMs{};
+};
+
+struct PlayerRespawnedEventDTO {
+    NetworkEntityId entityId{};
+    Fixed x{};
+    Fixed y{};
+};
+
 struct EntityEnteredInterestEventDTO {
     NetworkEntityId entityId{};
     ClientId observerClientId{};
@@ -71,6 +93,9 @@ using NetworkEventPayloadDTO = std::variant<
     WeaponFiredEventDTO,
     ProjectileSpawnedEventDTO,
     HitConfirmedEventDTO,
+    PlayerDamagedEventDTO,
+    PlayerDiedEventDTO,
+    PlayerRespawnedEventDTO,
     EntityEnteredInterestEventDTO,
     EntityLeftInterestEventDTO>;
 

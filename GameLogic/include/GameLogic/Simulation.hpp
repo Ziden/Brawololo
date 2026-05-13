@@ -26,6 +26,8 @@ struct SimulationConfig {
     std::uint16_t maxPlayers{256};
     Fixed movementAccelerationPerSecond{PixelsToFixed(2600)};
     Fixed maxMoveSpeedPerSecond{PixelsToFixed(360)};
+    std::int32_t maxPlayerHealth{100};
+    TimestampMs respawnDelayMs{1500};
     WeaponType defaultWeapon{WeaponType::Bow};
     WeaponDefinitionTable weapons{DefaultWeaponDefinitions()};
 };
@@ -54,6 +56,7 @@ public:
 
 private:
     [[nodiscard]] NetworkEntityId AllocateNetworkId();
+    [[nodiscard]] TransformComponent SpawnTransformForClient(ClientId clientId) const;
     [[nodiscard]] NetworkEntityId CreatePlayer(ClientId clientId, Fixed x, Fixed y);
     [[nodiscard]] NetworkEntityId CreateProjectile(
         NetworkEntityId ownerId,
@@ -68,6 +71,7 @@ private:
     void ProcessInputs();
     void ProcessWeaponWarmups();
     void ProcessProjectiles();
+    void ProcessRespawns();
     void ClampToMap(TransformComponent& transform) const;
     [[nodiscard]] SnapshotPriority PriorityForEntity(ClientId observerClientId, entt::entity entity) const;
 

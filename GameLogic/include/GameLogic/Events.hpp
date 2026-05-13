@@ -54,6 +54,25 @@ struct HitConfirmed {
     TimestampMs serverTimeMs{};
 };
 
+struct PlayerDamaged {
+    NetworkEntityId entityId{};
+    NetworkEntityId attackerId{};
+    std::int32_t damage{};
+    std::int32_t healthAfter{};
+};
+
+struct PlayerDied {
+    NetworkEntityId entityId{};
+    NetworkEntityId attackerId{};
+    TimestampMs respawnAtMs{};
+};
+
+struct PlayerRespawned {
+    NetworkEntityId entityId{};
+    Fixed x{};
+    Fixed y{};
+};
+
 struct EntityEnteredInterest {
     NetworkEntityId entityId{};
     ClientId observerClientId{};
@@ -85,6 +104,9 @@ using DomainEvent = std::variant<
     WeaponFired,
     ProjectileSpawned,
     HitConfirmed,
+    PlayerDamaged,
+    PlayerDied,
+    PlayerRespawned,
     EntityEnteredInterest,
     EntityLeftInterest,
     SnapshotApplied,

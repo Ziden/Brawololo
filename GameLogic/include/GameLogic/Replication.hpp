@@ -39,9 +39,12 @@ struct MovementStateDTO {
 struct CombatStateDTO {
     NetworkEntityId entityId{};
     std::int32_t health{100};
+    std::int32_t maxHealth{100};
     WeaponType weaponType{WeaponType::None};
     bool weaponWarming{};
     TimestampMs weaponWarmupCompletesAtMs{};
+    bool defeated{};
+    TimestampMs respawnAtMs{};
     bool serverOwnedProjectile{};
     NetworkEntityId projectileOwnerId{};
 };

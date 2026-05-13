@@ -108,9 +108,12 @@ void WriteCombat(BinaryWriter& writer, const CombatStateDTO& combat)
 {
     WriteEntityId(writer, combat.entityId);
     writer.WritePod(combat.health);
+    writer.WritePod(combat.maxHealth);
     writer.WritePod(static_cast<std::uint8_t>(combat.weaponType));
     writer.WritePod(static_cast<std::uint8_t>(combat.weaponWarming ? 1 : 0));
     writer.WritePod(combat.weaponWarmupCompletesAtMs);
+    writer.WritePod(static_cast<std::uint8_t>(combat.defeated ? 1 : 0));
+    writer.WritePod(combat.respawnAtMs);
     writer.WritePod(static_cast<std::uint8_t>(combat.serverOwnedProjectile ? 1 : 0));
     WriteEntityId(writer, combat.projectileOwnerId);
 }
@@ -120,23 +123,31 @@ std::optional<CombatStateDTO> ReadCombat(BinaryReader& reader)
     CombatStateDTO combat{};
     const auto entityId = ReadEntityId(reader);
     const auto health = reader.ReadPod<std::int32_t>();
+    const auto maxHealth = reader.ReadPod<std::int32_t>();
     const auto weaponType = ReadWeaponType(reader);
     const auto weaponWarming = reader.ReadBool();
     const auto weaponWarmupCompletesAtMs = reader.ReadPod<TimestampMs>();
+    const auto defeated = reader.ReadBool();
+    const auto respawnAtMs = reader.ReadPod<TimestampMs>();
     const auto serverOwnedProjectile = reader.ReadBool();
     const auto projectileOwnerId = ReadEntityId(reader);
 
-    if (!entityId.has_value() || !health.has_value() || !weaponType.has_value() ||
+    if (!entityId.has_value() || !health.has_value() || !maxHealth.has_value() ||
+        !weaponType.has_value() ||
         !weaponWarming.has_value() || !weaponWarmupCompletesAtMs.has_value() ||
-        !serverOwnedProjectile.has_value() || !projectileOwnerId.has_value()) {
+        !defeated.has_value() || !respawnAtMs.has_value() || !serverOwnedProjectile.has_value() ||
+        !projectileOwnerId.has_value()) {
         return std::nullopt;
     }
 
     combat.entityId = *entityId;
     combat.health = *health;
+    combat.maxHealth = *maxHealth;
     combat.weaponType = *weaponType;
     combat.weaponWarming = *weaponWarming;
     combat.weaponWarmupCompletesAtMs = *weaponWarmupCompletesAtMs;
+    combat.defeated = *defeated;
+    combat.respawnAtMs = *respawnAtMs;
     combat.serverOwnedProjectile = *serverOwnedProjectile;
     combat.projectileOwnerId = *projectileOwnerId;
     return combat;
@@ -370,6 +381,22 @@ std::vector<std::byte> SerializeNetworkEvent(const NetworkEventDTO& event)
         WriteEntityId(writer, hit->targetId);
         WriteEntityId(writer, hit->projectileId);
         writer.WritePod(hit->serverTimeMs);
+    } else if (const auto* damaged = std::get_if<PlayerDamagedEventDTO>(&event.payload);
+        damaged != nullptr) {
+        WriteEntityId(writer, damaged->entityId);
+        WriteEntityId(writer, damaged->attackerId);
+        writer.WritePod(damaged->damage);
+        writer.WritePod(damaged->healthAfter);
+    } else if (const auto* died = std::get_if<PlayerDiedEventDTO>(&event.payload);
+        died != nullptr) {
+        WriteEntityId(writer, died->entityId);
+        WriteEntityId(writer, died->attackerId);
+        writer.WritePod(died->respawnAtMs);
+    } else if (const auto* respawned = std::get_if<PlayerRespawnedEventDTO>(&event.payload);
+        respawned != nullptr) {
+        WriteEntityId(writer, respawned->entityId);
+        writer.WritePod(respawned->x);
+        writer.WritePod(respawned->y);
     } else if (const auto* entered = std::get_if<EntityEnteredInterestEventDTO>(&event.payload);
         entered != nullptr) {
         WriteEntityId(writer, entered->entityId);
@@ -470,6 +497,38 @@ std::optional<NetworkEventDTO> DeserializeNetworkEvent(std::span<const std::byte
             return std::nullopt;
         }
         event.payload = HitConfirmedEventDTO{*attackerId, *targetId, *projectileId, *hitServerTimeMs};
+        break;
+    }
+    case NetworkEventKind::PlayerDamaged: {
+        const auto entityId = ReadEntityId(reader);
+        const auto attackerId = ReadEntityId(reader);
+        const auto damage = reader.ReadPod<std::int32_t>();
+        const auto healthAfter = reader.ReadPod<std::int32_t>();
+        if (!entityId.has_value() || !attackerId.has_value() || !damage.has_value() ||
+            !healthAfter.has_value()) {
+            return std::nullopt;
+        }
+        event.payload = PlayerDamagedEventDTO{*entityId, *attackerId, *damage, *healthAfter};
+        break;
+    }
+    case NetworkEventKind::PlayerDied: {
+        const auto entityId = ReadEntityId(reader);
+        const auto attackerId = ReadEntityId(reader);
+        const auto respawnAtMs = reader.ReadPod<TimestampMs>();
+        if (!entityId.has_value() || !attackerId.has_value() || !respawnAtMs.has_value()) {
+            return std::nullopt;
+        }
+        event.payload = PlayerDiedEventDTO{*entityId, *attackerId, *respawnAtMs};
+        break;
+    }
+    case NetworkEventKind::PlayerRespawned: {
+        const auto entityId = ReadEntityId(reader);
+        const auto x = reader.ReadPod<Fixed>();
+        const auto y = reader.ReadPod<Fixed>();
+        if (!entityId.has_value() || !x.has_value() || !y.has_value()) {
+            return std::nullopt;
+        }
+        event.payload = PlayerRespawnedEventDTO{*entityId, *x, *y};
         break;
     }
     case NetworkEventKind::EntityEnteredInterest: {

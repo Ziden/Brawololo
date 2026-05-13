@@ -31,12 +31,11 @@ bool GameSimulation::Submit(const LoginCommand& command)
 
     lastAcceptedSequence_[command.header.clientId] = command.header.sequence;
 
-    const auto tileX = 10 + static_cast<std::int32_t>(command.header.clientId % 20U);
-    const auto tileY = 10 + static_cast<std::int32_t>((command.header.clientId / 20U) % 20U);
+    const auto spawn = SpawnTransformForClient(command.header.clientId);
     [[maybe_unused]] const auto createdPlayerId = CreatePlayer(
         command.header.clientId,
-        PixelsToFixed(tileX * config_.map.tileSizePixels),
-        PixelsToFixed(tileY * config_.map.tileSizePixels));
+        spawn.x,
+        spawn.y);
     return true;
 }
 
@@ -65,6 +64,7 @@ void GameSimulation::TickFixed()
     ProcessInputs();
     ProcessWeaponWarmups();
     ProcessProjectiles();
+    ProcessRespawns();
 }
 
 void GameSimulation::ReplayLocalInputsForPrediction(const std::vector<ClientInputPacket>& inputs)
@@ -142,6 +142,9 @@ SnapshotDTO GameSimulation::BuildSnapshot(ClientId observerClientId, SnapshotId 
             CombatStateDTO combat{};
             combat.entityId = identity.id;
             combat.health = player->health;
+            combat.maxHealth = player->maxHealth;
+            combat.defeated = player->defeated;
+            combat.respawnAtMs = player->respawnAtMs;
             if (const auto* weapon = registry_.try_get<WeaponStateComponent>(entity); weapon != nullptr) {
                 combat.weaponType = weapon->type;
                 combat.weaponWarming = weapon->warming;
@@ -215,6 +218,9 @@ void GameSimulation::ApplySnapshot(const SnapshotDTO& snapshot, ClientId localCl
             player.clientId = state.replication.ownerClientId;
             if (state.combat.has_value()) {
                 player.health = state.combat->health;
+                player.maxHealth = state.combat->maxHealth;
+                player.defeated = state.combat->defeated;
+                player.respawnAtMs = state.combat->respawnAtMs;
             }
             auto& weapon = registry_.get_or_emplace<WeaponStateComponent>(entity);
             if (state.combat.has_value()) {
@@ -360,6 +366,15 @@ NetworkEntityId GameSimulation::AllocateNetworkId()
     return allocated;
 }
 
+TransformComponent GameSimulation::SpawnTransformForClient(ClientId clientId) const
+{
+    const auto tileX = 10 + static_cast<std::int32_t>(clientId % 20U);
+    const auto tileY = 10 + static_cast<std::int32_t>((clientId / 20U) % 20U);
+    return TransformComponent{
+        PixelsToFixed(tileX * config_.map.tileSizePixels),
+        PixelsToFixed(tileY * config_.map.tileSizePixels)};
+}
+
 NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y)
 {
     const auto entity = registry_.create();
@@ -369,7 +384,9 @@ NetworkEntityId GameSimulation::CreatePlayer(ClientId clientId, Fixed x, Fixed y
     registry_.emplace<TransformComponent>(entity, x, y);
     registry_.emplace<VelocityComponent>(entity);
     registry_.emplace<AimComponent>(entity);
-    registry_.emplace<PlayerComponent>(entity, clientId, 100);
+    registry_.emplace<PlayerComponent>(
+        entity,
+        PlayerComponent{clientId, config_.maxPlayerHealth, config_.maxPlayerHealth});
     registry_.emplace<WeaponStateComponent>(entity, WeaponStateComponent{config_.defaultWeapon});
     registry_.emplace<OwnedByPlayerComponent>(entity, clientId);
     registry_.emplace<NetworkReplicationComponent>(entity, NetworkReplicationMode::AreaOfInterest);

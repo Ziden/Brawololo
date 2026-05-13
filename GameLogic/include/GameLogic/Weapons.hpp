@@ -21,6 +21,7 @@ struct WeaponDefinition {
     TimestampMs warmupMs{};
     Fixed projectileSpeedPerSecond{};
     TimestampMs projectileLifetimeMs{};
+    std::int32_t damage{};
     bool serverSpawnedProjectile{};
 };
 
@@ -30,7 +31,7 @@ using WeaponDefinitionTable = std::array<WeaponDefinition, kWeaponTypeCount>;
 {
     switch (type) {
     case WeaponType::Bow:
-        return WeaponDefinition{WeaponType::Bow, 300, PixelsToFixed(900), 2000, true};
+        return WeaponDefinition{WeaponType::Bow, 300, PixelsToFixed(900), 2000, 35, true};
     case WeaponType::None:
         return WeaponDefinition{};
     }

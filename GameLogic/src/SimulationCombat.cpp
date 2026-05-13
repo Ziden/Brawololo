@@ -1,5 +1,6 @@
 #include "GameLogic/Simulation.hpp"
 
+#include <algorithm>
 #include <vector>
 
 namespace game {
@@ -65,6 +66,13 @@ void GameSimulation::ProcessWeaponWarmups()
     std::vector<ProjectileRequest> projectilesToSpawn{};
     const auto view = registry_.view<NetworkIdentityComponent, TransformComponent, AimComponent, WeaponStateComponent>();
     for (const auto entity : view) {
+        if (const auto* player = registry_.try_get<PlayerComponent>(entity);
+            player != nullptr && player->defeated) {
+            auto& defeatedWeapon = view.get<WeaponStateComponent>(entity);
+            defeatedWeapon.warming = false;
+            continue;
+        }
+
         auto& weapon = view.get<WeaponStateComponent>(entity);
         if (!weapon.warming || timeMs_ < weapon.warmupCompletesAtMs) {
             continue;
@@ -124,9 +132,23 @@ void GameSimulation::ProcessProjectiles()
                 continue;
             }
 
+            auto& player = players.get<PlayerComponent>(playerEntity);
+            if (player.defeated) {
+                continue;
+            }
+
             const auto& playerTransform = players.get<TransformComponent>(playerEntity);
             if (CloseEnoughForHit(transform, playerTransform)) {
+                const auto* weapon = FindWeaponDefinition(config_.weapons, projectile.sourceWeapon);
+                const auto damage = weapon != nullptr ? weapon->damage : std::int32_t{};
+                player.health = std::max<std::int32_t>(0, player.health - damage);
                 QueueEvent(HitConfirmed{projectile.ownerId, playerIdentity.id, projectileIdentity.id, timeMs_});
+                QueueEvent(PlayerDamaged{playerIdentity.id, projectile.ownerId, damage, player.health});
+                if (player.health <= 0) {
+                    player.defeated = true;
+                    player.respawnAtMs = timeMs_ + config_.respawnDelayMs;
+                    QueueEvent(PlayerDied{playerIdentity.id, projectile.ownerId, player.respawnAtMs});
+                }
                 toDestroy.push_back(projectileEntity);
                 break;
             }
@@ -138,6 +160,36 @@ void GameSimulation::ProcessProjectiles()
             entityByNetworkId_.erase(registry_.get<NetworkIdentityComponent>(entity).id);
             registry_.destroy(entity);
         }
+    }
+}
+
+void GameSimulation::ProcessRespawns()
+{
+    const auto players = registry_.view<NetworkIdentityComponent, PlayerComponent, TransformComponent, VelocityComponent>();
+    for (const auto entity : players) {
+        auto& player = players.get<PlayerComponent>(entity);
+        if (!player.defeated || timeMs_ < player.respawnAtMs) {
+            continue;
+        }
+
+        const auto& identity = players.get<NetworkIdentityComponent>(entity);
+        auto& transform = players.get<TransformComponent>(entity);
+        auto& velocity = players.get<VelocityComponent>(entity);
+        const auto spawn = SpawnTransformForClient(player.clientId);
+
+        player.health = player.maxHealth;
+        player.defeated = false;
+        player.respawnAtMs = 0;
+        transform = spawn;
+        velocity = VelocityComponent{};
+
+        if (auto* weapon = registry_.try_get<WeaponStateComponent>(entity); weapon != nullptr) {
+            weapon->warming = false;
+            weapon->warmupStartedAtMs = 0;
+            weapon->warmupCompletesAtMs = 0;
+        }
+
+        QueueEvent(PlayerRespawned{identity.id, transform.x, transform.y});
     }
 }
 

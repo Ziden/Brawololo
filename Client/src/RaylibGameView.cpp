@@ -64,8 +64,11 @@ void RaylibGameView::Render(const ClientViewFrame& frame) const
     BeginDrawing();
     ClearBackground(Color{24, 28, 33, 255});
 
+    RaylibSceneRenderConfig sceneConfig{};
+    sceneConfig.viewportWidth = width_;
+    sceneConfig.viewportHeight = height_;
+    DrawRaylibScene(frame, sceneConfig);
     DrawRaylibDebugOverlay(frame, height_);
-    DrawRaylibScene(frame);
 
     EndDrawing();
 }

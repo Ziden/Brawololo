@@ -26,6 +26,11 @@ Fixed ApplyFriction(Fixed velocity)
 
 void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPacket& packet)
 {
+    if (const auto* player = registry_.try_get<PlayerComponent>(entity);
+        player != nullptr && player->defeated) {
+        return;
+    }
+
     registry_.emplace_or_replace<InputIntentComponent>(
         entity,
         packet.input.moveX,
@@ -64,6 +69,14 @@ void GameSimulation::ApplyInputToEntity(entt::entity entity, const ClientInputPa
 void GameSimulation::IntegrateMovement(entt::entity entity)
 {
     if (!registry_.all_of<NetworkIdentityComponent, TransformComponent, VelocityComponent>(entity)) {
+        return;
+    }
+
+    if (const auto* player = registry_.try_get<PlayerComponent>(entity);
+        player != nullptr && player->defeated) {
+        auto& velocity = registry_.get<VelocityComponent>(entity);
+        velocity.vx = 0;
+        velocity.vy = 0;
         return;
     }
 
