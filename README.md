@@ -80,3 +80,9 @@ Bow is implemented as the first `WeaponDefinition`, not as a hard-coded special 
 The Raylib scene consumes renderer-agnostic `ClientViewFrame` data. It currently provides a camera-follow tile-map scaffold, player/projectile rendering, health bars, warmup rings, defeated-state visuals, cosmetic predicted fire cues, authoritative hit/death/respawn effects, and prediction-correction markers without reaching into networking or server internals.
 
 Reliable event delivery is app-level and testable: clients ACK reliable network events, and the server resends pending events with bounded backoff until acknowledged.
+
+Replication hardening now includes delta placeholder planning. The server compares ACKed snapshot baselines with the next planned snapshot and records added/changed/removed/unchanged entity counts, but the wire serializer intentionally still sends full-state snapshots until real delta encoding is added.
+
+AOI transitions are also explicit: snapshot interest enter/leave transitions emit reliable interest events so spawn/despawn policy is visible and testable outside local client snapshot application.
+
+`KcpRtcTransport` is still a scaffold seam, not a live KCP/WebRTC implementation. It now has explicit role/config fields and fails safely with invalid-configuration, not-implemented, not-connected, and protocol-rejected states.

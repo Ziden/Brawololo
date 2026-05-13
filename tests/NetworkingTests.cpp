@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <vector>
 
 namespace {
 
@@ -97,32 +98,35 @@ void TestReliableEventsResendUntilAcknowledged() {
     serverHost.TickAndSendSnapshots(0);
     serverHost.TickAndSendSnapshots(1);
 
-    std::size_t spawnEvents = 0;
-    std::optional<game::NetworkEventId> eventId{};
+    std::size_t reliableEvents = 0;
+    std::vector<game::NetworkEventId> eventIds{};
     while (auto envelope = clientTransport.Poll()) {
-        if (envelope->messageClass != game::MessageClass::SpawnAccepted) {
+        if (envelope->messageClass != game::MessageClass::SpawnAccepted &&
+            envelope->messageClass != game::MessageClass::InterestEvent) {
             continue;
         }
 
         const auto event = game::DeserializeNetworkEvent(
             std::span<const std::byte>{envelope->payload.data(), envelope->payload.size()});
         if (event.has_value()) {
-            eventId = event->eventId;
-            ++spawnEvents;
+            eventIds.push_back(event->eventId);
+            ++reliableEvents;
         }
     }
 
-    Expect(spawnEvents >= 2, "unacked reliable event is resent");
+    Expect(reliableEvents >= 2, "unacked reliable event is resent");
     Expect(serverHost.Stats().reliableEventsResent >= 1, "server records reliable event resend");
-    Expect(eventId.has_value(), "resent reliable event decodes");
+    Expect(!eventIds.empty(), "resent reliable events decode");
 
-    Expect(clientPump.SendNetworkEventAck(game::NetworkEventAckDTO{5, *eventId, 2}),
-           "client sends reliable event ack");
+    for (const auto eventId : eventIds) {
+        Expect(clientPump.SendNetworkEventAck(game::NetworkEventAckDTO{5, eventId, 2}),
+               "client sends reliable event ack");
+    }
     serverHost.PumpClientMessages();
-    const auto sentBeforeAckedTick = serverHost.Stats().reliableEventsSent;
+    const auto resentBeforeAckedTick = serverHost.Stats().reliableEventsResent;
 
     serverHost.TickAndSendSnapshots(8);
-    Expect(serverHost.Stats().reliableEventsSent == sentBeforeAckedTick,
+    Expect(serverHost.Stats().reliableEventsResent == resentBeforeAckedTick,
            "acked reliable event stops resending");
 }
 

@@ -92,6 +92,7 @@ void TestServerNetworkHostPlansDeltaPlaceholdersAfterSnapshotAck() {
 
     serverHost.TickAndSendSnapshots(16);
     game::client::ClientSessionStats sessionStats{};
+    sessionStats.localClientId = 1;
     game::EventList ignoredEvents{};
     Expect(clientPump.PumpIncoming(runtime, sessionStats, ignoredEvents, 16) == 1,
            "delta host test applies first full snapshot");

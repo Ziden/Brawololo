@@ -11,9 +11,12 @@ The project is in a late scaffold/early playable-slice phase. It is not yet a fi
 - `Client` also owns renderer-agnostic visual effect view data through `ClientVisualEffectLog`; Raylib draws these as cosmetic cues without changing simulation truth.
 - `Server` owns authoritative runtime, server network host, lag-compensation history/query seam, per-client replication state, snapshot cadence, reliable event tracking, AOI interest tracking, and baseline-aware snapshot delivery.
 - `ServerNetworkHost` resends pending reliable events on bounded exponential backoff until clients ACK them.
+- `ServerNetworkHost` now computes snapshot delta placeholder stats from ACKed baselines while preserving the current full-state serializer.
+- `ServerNetworkHost` sends reliable AOI enter/leave events for spawn/despawn policy at the interest boundary.
 - `Server` also owns `SimulationOnlyClientDriver`, a deterministic test/play driver that submits normal pure `ClientInputPacket`s for simulation-only opponents.
 - `Networking` owns transport lifecycle abstractions, protocol envelope validation, loopback transport with deterministic loss/delay conditions, and the placeholder KCP/libdatachannel seam.
 - `Networking` now includes `MultiClientLoopbackTransport`, a peer-addressed loopback transport that routes multiple remote client endpoints through one server transport for architecture tests and future local workflows.
+- `KcpRtcTransport` has explicit role/config fields and fails safely with invalid-configuration/not-implemented/not-connected/protocol-rejected errors until the native implementation is wired.
 - Same-process mode runs client and server through loopback transport and the same serialized protocol path as remote networking.
 - Current verification has been green with `cmake --build --preset vs2022-debug`, `ctest --preset vs2022-debug`, `Server.exe`, `SingleProcess.exe`, and `TwoClientSmoke.exe`.
 
@@ -38,13 +41,14 @@ The project is in a late scaffold/early playable-slice phase. It is not yet a fi
 5. Done: reliable-event resend/backoff for unacked app-level reliable events.
 6. Done: peer-addressed multi-client loopback support so two real `RemoteClientSession`s can share one `ServerNetworkHost`.
 7. Done: real multiplayer smoke workflow through `TwoClientSmoke`, using two `ClientApplication` instances and two `RemoteClientSession`s against one `ServerNetworkHost`.
-8. Replication hardening: snapshot delta placeholder implementation and AOI enter/leave reliable spawn/despawn policy.
-9. Remote transport pass: flesh out KCP/libdatachannel adapter or a fake remote socket adapter before browser work.
-10. Browser/WASM pass: Raylib web build preset, asset packaging, browser-safe networking path, and smoke documentation.
-11. Minimal playable release: one server, clients join instantly, move/aim/fire bow, arrows damage players, deaths respawn, and single-process mode remains a clean bridge.
+8. Done: replication hardening with snapshot delta placeholders and reliable AOI enter/leave spawn/despawn events.
+9. Done: remote transport scaffold pass with safer `KcpRtcTransport` config/state/error behavior and peer-addressed fake remote workflow through multi-client loopback.
+10. Browser/WASM pass: Raylib web build preset hardening, asset packaging, browser-safe networking path, and smoke documentation.
+11. Native remote transport implementation: wire actual KCP/libdatachannel signaling/data channel behavior behind `KcpRtcTransport`.
+12. Minimal playable release: one server, clients join instantly, move/aim/fire bow, arrows damage players, deaths respawn, and single-process mode remains a clean bridge.
 
 ## Current Priority
-The next implementation slice should continue replication hardening:
-- Add snapshot delta placeholders around baseline comparison without changing the current full-state serializer yet.
-- Add explicit AOI enter/leave spawn/despawn policy using reliable events.
-- Keep `TwoClientSmoke` as the quick end-to-end workflow check while hardening replication.
+The next implementation slice should start the Browser/WASM pass:
+- Harden the Emscripten/Raylib build path and document expected SDK setup.
+- Add browser-safe networking notes around WebRTC data channels and the `KcpRtcTransport` seam.
+- Keep `TwoClientSmoke` and `SingleProcess` as native regression checks while browser work begins.

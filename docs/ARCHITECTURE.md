@@ -29,11 +29,15 @@ Snapshots reserve `snapshotId`, `baselineId`, and `SnapshotDeliveryKind` immedia
 
 `SnapshotAckDTO` is the client-to-server baseline signal. The server bases delta eligibility on the latest acknowledged snapshot, not merely the latest snapshot it attempted to send. This is intentionally conservative under packet loss and delayed delivery.
 
+`SnapshotDeltaPlan` is the current delta-compression placeholder. It compares a planned snapshot to an acknowledged baseline and classifies entity states as added, changed, removed, or unchanged. `ServerNetworkHost` records those counts for observability, but the serializer still sends full entity state until real delta payloads are introduced.
+
 The first protocol serializer supports movement DTOs, `ClientInputPacket`, and `SnapshotDTO`. It is intentionally simple binary encoding for scaffold tests; the protocol boundary is explicit so versioning, endian policy, compression, and schema evolution can be added without touching ECS storage.
 
 `ReplicationPlanner` is the explicit snapshot delivery policy seam. It consumes ECS-independent `SnapshotDTO` data, orders entities by owner/priority, applies optional entity budgets, and reports planning stats. `ServerNetworkHost` runs snapshots through this planner before serialization so future bandwidth limits, delta compression, and per-client scheduling do not leak into `GameSimulation`.
 
 `InterestTracker` records per-client interest transitions from planned snapshots. The server can now distinguish entered/stayed/exited interest sets for diagnostics and future reliable spawn/despawn messaging without coupling that policy to EnTT storage.
+
+AOI enter/leave is now an explicit reliable policy. When a planned snapshot changes a client's interest set, `ServerNetworkHost` sends observer-targeted `EntityEnteredInterest` and `EntityLeftInterest` network events. The client may still apply snapshot state immediately, but spawn/despawn intent is no longer only an incidental side effect of snapshot application.
 
 ## Networking Contract
 Message classes are mapped to explicit channels:
@@ -50,6 +54,8 @@ Message classes are mapped to explicit channels:
 All envelopes carry a protocol version and are validated before transport delivery or protocol pumping. The current schema reserves payload limits, channel/message compatibility checks, and version rejection as first-class behavior before a byte-level wire format is finalized.
 
 `LoopbackTransport` is the concrete same-process point-to-point implementation for tests and fast iteration. It can optionally apply deterministic packet loss and delayed delivery through `LoopbackNetworkConditions`, giving tests a local way to exercise stale, missing, and out-of-order envelopes without depending on a real network stack. `MultiClientLoopbackTransport` adds peer-addressed routing so multiple `RemoteClientSession`s can share one `ServerNetworkHost` without leaking client routing into gameplay code. `KcpRtcTransport` is the integration seam for KCP over libdatachannel/WebRTC data channels.
+
+`KcpRtcTransport` is intentionally still non-operational until libdatachannel/KCP integration is wired, but it now behaves like a real adapter boundary: valid configuration is distinguished from invalid configuration, protocol envelopes are validated before state checks, disconnected sends report `NotConnected`, and valid `Connect` attempts report `NotImplemented`.
 
 `ITransport` exposes lifecycle and diagnostics: `Connect`, `Update`, `Close`, state, last error, and envelope/byte stats. Concrete transports should reject invalid envelopes and report `TransportError` instead of letting protocol problems leak into gameplay code.
 
