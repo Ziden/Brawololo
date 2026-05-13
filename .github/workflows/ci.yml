@@ -8,6 +8,22 @@ permissions:
   contents: read
 
 jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Verify formatting
+        run: |
+          git ls-files '*.cpp' '*.hpp' '*.h' '*.c' '*.cc' '*.hh' '*.inl' |
+            xargs -r clang-format --dry-run --Werror
+
   windows-debug:
     runs-on: windows-latest
     steps:
