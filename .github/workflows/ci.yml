@@ -34,10 +34,10 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure Visual Studio debug preset
-        run: cmake --preset vs2022-debug
+        run: cmake --preset native-debug
 
       - name: Build test target
-        run: cmake --build --preset vs2022-debug --target ScaffoldTests
+        run: cmake --build --preset native-debug --target ScaffoldTests
 
       - name: Run tests
-        run: ctest --preset vs2022-debug
+        run: ctest --preset native-debug
