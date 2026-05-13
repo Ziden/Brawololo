@@ -1,0 +1,176 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "native-debug",
+      "displayName": "Native Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SCAFFOLD_BUILD_TESTS": "ON",
+        "SCAFFOLD_WARNINGS_AS_ERRORS": "ON",
+        "SCAFFOLD_FETCH_RAYLIB": "ON"
+      }
+    },
+    {
+      "name": "native-release",
+      "displayName": "Native Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SCAFFOLD_BUILD_TESTS": "ON",
+        "SCAFFOLD_FETCH_RAYLIB": "ON"
+      }
+    },
+    {
+      "name": "native-asan",
+      "displayName": "Native ASan+UBSan",
+      "inherits": "native-debug",
+      "binaryDir": "${sourceDir}/build/native-asan",
+      "cacheVariables": {
+        "SCAFFOLD_ENABLE_ASAN": "ON",
+        "SCAFFOLD_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "native-clang-tidy",
+      "displayName": "Native Clang-Tidy",
+      "inherits": "native-debug",
+      "binaryDir": "${sourceDir}/build/native-clang-tidy",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "SCAFFOLD_ENABLE_CLANG_TIDY": "ON"
+      }
+    },
+    {
+      "name": "vs2022-debug",
+      "displayName": "Visual Studio 2022 Debug",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/vs2022-debug",
+      "cacheVariables": {
+        "SCAFFOLD_BUILD_TESTS": "ON",
+        "SCAFFOLD_WARNINGS_AS_ERRORS": "ON",
+        "SCAFFOLD_FETCH_RAYLIB": "ON"
+      }
+    },
+    {
+      "name": "vs2022-analysis",
+      "displayName": "Visual Studio 2022 Analyze",
+      "inherits": "vs2022-debug",
+      "binaryDir": "${sourceDir}/build/vs2022-analysis",
+      "cacheVariables": {
+        "SCAFFOLD_ENABLE_MSVC_ANALYSIS": "ON",
+        "SCAFFOLD_WARNINGS_AS_ERRORS": "OFF"
+      }
+    },
+    {
+      "name": "server-debug",
+      "displayName": "Server Debug",
+      "inherits": "native-debug",
+      "binaryDir": "${sourceDir}/build/server-debug",
+      "cacheVariables": {
+        "SCAFFOLD_BUILD_CLIENT": "OFF",
+        "SCAFFOLD_BUILD_SERVER": "ON",
+        "SCAFFOLD_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "emscripten-client",
+      "displayName": "Emscripten Client",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/emscripten-client",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SCAFFOLD_BUILD_CLIENT": "ON",
+        "SCAFFOLD_BUILD_SERVER": "OFF",
+        "SCAFFOLD_BUILD_TESTS": "OFF",
+        "SCAFFOLD_FETCH_RAYLIB": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "native-debug",
+      "configurePreset": "native-debug"
+    },
+    {
+      "name": "native-release",
+      "configurePreset": "native-release"
+    },
+    {
+      "name": "native-asan",
+      "configurePreset": "native-asan"
+    },
+    {
+      "name": "native-clang-tidy",
+      "configurePreset": "native-clang-tidy"
+    },
+    {
+      "name": "vs2022-debug",
+      "configurePreset": "vs2022-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "vs2022-analysis",
+      "configurePreset": "vs2022-analysis",
+      "configuration": "Debug"
+    },
+    {
+      "name": "server-debug",
+      "configurePreset": "server-debug"
+    },
+    {
+      "name": "emscripten-client",
+      "configurePreset": "emscripten-client"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "native-debug",
+      "configurePreset": "native-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "native-asan",
+      "configurePreset": "native-asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "native-clang-tidy",
+      "configurePreset": "native-clang-tidy",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "vs2022-debug",
+      "configurePreset": "vs2022-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "vs2022-analysis",
+      "configurePreset": "vs2022-analysis",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

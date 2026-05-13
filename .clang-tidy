@@ -1,0 +1,15 @@
+Checks: >
+  clang-analyzer-*,
+  bugprone-assert-side-effect,
+  bugprone-branch-clone,
+  bugprone-inaccurate-erase,
+  bugprone-move-forwarding-reference,
+  bugprone-sizeof-expression,
+  bugprone-suspicious-memory-comparison,
+  bugprone-use-after-move,
+  performance-for-range-copy,
+  performance-inefficient-vector-operation,
+  performance-move-const-arg
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(Client|GameLogic|Networking|Server|tests)/'
+FormatStyle: file
