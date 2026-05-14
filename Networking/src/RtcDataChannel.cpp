@@ -74,4 +74,26 @@ std::queue<std::vector<std::byte>>& InMemoryRtcDataChannel::OutgoingQueue() {
     return endpoint_ == Endpoint::A ? state_->aToB : state_->bToA;
 }
 
+bool UnsupportedRtcDataChannel::SendFrame(std::span<const std::byte>) {
+    ++stats_.sendFailures;
+    lastError_ = RtcDataChannelError::NotImplemented;
+    return false;
+}
+
+std::optional<std::vector<std::byte>> UnsupportedRtcDataChannel::PollFrame() {
+    return std::nullopt;
+}
+
+RtcDataChannelState UnsupportedRtcDataChannel::State() const noexcept {
+    return RtcDataChannelState::Failed;
+}
+
+RtcDataChannelStats UnsupportedRtcDataChannel::Stats() const noexcept {
+    return stats_;
+}
+
+RtcDataChannelError UnsupportedRtcDataChannel::LastError() const noexcept {
+    return lastError_;
+}
+
 } // namespace game::net

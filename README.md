@@ -1,10 +1,10 @@
 # Raylib Multiplayer Scaffold
 
-This is a C++ scaffold for a server-authoritative multiplayer game using shared EnTT ECS game logic, a Raylib client, a headless server, and transport abstractions prepared for KCP over libdatachannel.
+This is a C++ codebase for a server-authoritative multiplayer game using shared EnTT ECS game logic, a Raylib client, a headless server, and transport abstractions prepared for KCP over libdatachannel running a WASM client on the browser.
 
 ## Layout
 - `GameLogic/`: shared ECS simulation, system-split movement/combat logic, weapon definitions, pure commands, domain events, network event DTOs, DTO snapshots, baseline cache, interest tracking, lag-compensation queries, replication planning, prediction/reconciliation helpers, fixed-point movement, map chunks, and time sync.
-- `Networking/`: transport lifecycle interfaces, channel/message policy, point-to-point loopback, peer-addressed multi-client loopback, optional loss/reorder conditions, byte-level transport packet codec, RTC signaling DTOs/client seams, diagnostics, and the KCP/libdatachannel adapter seam.
+- `Networking/`: transport lifecycle interfaces, channel/message policy, point-to-point loopback, peer-addressed multi-client loopback, optional loss/reorder conditions, byte-level transport packet codec, RTC signaling/data-channel seams, diagnostics, and the KCP/libdatachannel adapter seam.
 - `Client/`: Raylib app shell, fixed-step host loop, client application orchestration, session adapters, protocol pump, renderer-agnostic view models/effects, split Raylib scene/debug rendering, connection state, snapshot/reliable-event acknowledgements, presentation interpolation, pending-input history, local prediction, and reconciliation.
 - `Server/`: headless server shell, network host, per-client replication state, authoritative runtime, stale command rejection, snapshot/reliable-event acknowledgement handling, reliable event broadcasting, baseline-aware snapshot generation, AOI interest diagnostics, lag-compensation history, and simulation-only test drivers.
 - `tests/`: dependency-light test harness covering the core architecture.
@@ -12,6 +12,8 @@ This is a C++ scaffold for a server-authoritative multiplayer game using shared 
 The `Client` executable is Raylib-only. It drives `ClientApplication`, which talks to an `IClientSession` instead of knowing whether the server is in-process or remote. `ClientProtocolPump`, `ServerNetworkHost`, `InProcessClientSession`, and `RemoteClientSession` share the same serialized message path. The `SingleProcess` executable is only a compact bridge/smoke target for that boundary, with optional simulation-only opponents driven by normal server input packets.
 
 `TwoClientSmoke` is a non-visual multiplayer workflow target. It runs two `ClientApplication` instances over two `RemoteClientSession`s, routes both through one `ServerNetworkHost` with `MultiClientLoopbackTransport`, and fails if clients do not connect, exchange snapshots, submit inputs, and produce server-authoritative combat events.
+
+`RtcSmoke` is a non-visual RTC-shaped workflow target. It runs one `RemoteClientSession` and one `ServerNetworkHost` through `KcpRtcPumpedTransport` with in-memory signaling/data-channel backends, then fails if login, input, snapshots, and ACK flow do not cross that boundary.
 
 The browser client uses a separate Emscripten entrypoint and `LocalPreviewClientSession`. It previews the Raylib client, input, fixed tick, local prediction, and view-model path without embedding a server or pretending KCP/WebRTC is already live.
 
@@ -45,6 +47,13 @@ For the routed two-client smoke workflow:
 ```powershell
 cmake --build --preset vs2022-debug --target TwoClientSmoke
 .\build\vs2022-debug\Client\Debug\TwoClientSmoke.exe
+```
+
+For the RTC-shaped remote transport smoke workflow:
+
+```powershell
+cmake --build --preset vs2022-debug --target RtcSmoke
+.\build\vs2022-debug\Client\Debug\RtcSmoke.exe
 ```
 
 For the browser preview workflow on Windows, use the repo-local runner instead of hand-assembling EMSDK commands each time:
@@ -130,6 +139,10 @@ AOI transitions are also explicit: snapshot interest enter/leave transitions emi
 
 `IRtcSignalingClient` is the signaling boundary. `InMemoryRtcSignalingClient` and `InMemoryRtcSignalingHub` give tests and native tools a real signaling service path for serialized `RtcSignalingMessage`s, while `PumpKcpRtcSignaling` bridges that signaling path into `KcpRtcTransport`.
 
-`CreateRemoteTransport` is the remote transport factory boundary. It currently constructs `KcpRtcTransport`, preserving a single place for native/browser client code to request the eventual live remote transport.
+`IRtcDataChannel` is the data-channel byte-frame boundary. `InMemoryRtcDataChannel` gives tests and native tools a paired frame channel, while `PumpKcpRtcDataChannel` bridges encoded frames between that channel and `KcpRtcTransport`.
+
+`KcpRtcPumpedTransport` composes `KcpRtcTransport`, `IRtcSignalingClient`, and `IRtcDataChannel` as a normal `ITransport`. The in-memory pair factory powers `RtcSmoke`; `CreateRemoteTransport` can construct the pumped shape with explicit unsupported native backends that report `NotImplemented` until a real libdatachannel backend exists.
+
+`CreateRemoteTransport` is the remote transport factory boundary. It preserves a single place for native/browser client code to request either the raw RTC scaffold seam or the pumped RTC composition.
 
 `RemoteClientSession` supports async transports: it starts the transport, waits for `Connected`, and only then sends the login request. That keeps the client session compatible with WebRTC-style connection timing.

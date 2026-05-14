@@ -79,4 +79,11 @@ if(TARGET ServerCore)
 
     target_link_libraries(TwoClientSmoke PRIVATE ClientCore ServerCore)
     scaffold_apply_common_options(TwoClientSmoke)
+
+    add_executable(RtcSmoke
+        src/rtc_smoke_main.cpp
+    )
+
+    target_link_libraries(RtcSmoke PRIVATE ClientCore ServerCore)
+    scaffold_apply_common_options(RtcSmoke)
 endif()

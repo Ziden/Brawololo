@@ -1,6 +1,7 @@
 add_library(Networking STATIC
     src/KcpRtcTransport.cpp
     src/KcpRtcDataChannelPump.cpp
+    src/KcpRtcPumpedTransport.cpp
     src/KcpRtcSignalingPump.cpp
     src/LoopbackTransport.cpp
     src/MultiClientLoopbackTransport.cpp

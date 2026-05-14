@@ -23,6 +23,7 @@ enum class RtcSignalingClientError {
     None,
     InvalidConfiguration,
     NotConnected,
+    NotImplemented,
     ProtocolRejected,
     RouteUnavailable,
 };
@@ -91,6 +92,22 @@ private:
 
     std::shared_ptr<InMemoryRtcSignalingHub> hub_{};
     RtcSignalingClientConfig config_{};
+    RtcSignalingConnectionState state_{RtcSignalingConnectionState::Disconnected};
+    RtcSignalingClientStats stats_{};
+    RtcSignalingClientError lastError_{RtcSignalingClientError::None};
+};
+
+class UnsupportedRtcSignalingClient final : public IRtcSignalingClient {
+public:
+    [[nodiscard]] bool Connect() override;
+    void Close() override;
+    [[nodiscard]] bool Send(const RtcSignalingMessage& message) override;
+    [[nodiscard]] std::optional<RtcSignalingMessage> Poll() override;
+    [[nodiscard]] RtcSignalingConnectionState State() const noexcept override;
+    [[nodiscard]] RtcSignalingClientStats Stats() const noexcept override;
+    [[nodiscard]] RtcSignalingClientError LastError() const noexcept override;
+
+private:
     RtcSignalingConnectionState state_{RtcSignalingConnectionState::Disconnected};
     RtcSignalingClientStats stats_{};
     RtcSignalingClientError lastError_{RtcSignalingClientError::None};

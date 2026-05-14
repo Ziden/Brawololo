@@ -170,4 +170,37 @@ bool InMemoryRtcSignalingClient::HasValidConfig() const noexcept {
     return config_.peerId != 0 && !config_.sessionId.empty();
 }
 
+bool UnsupportedRtcSignalingClient::Connect() {
+    state_ = RtcSignalingConnectionState::Failed;
+    lastError_ = RtcSignalingClientError::NotImplemented;
+    return false;
+}
+
+void UnsupportedRtcSignalingClient::Close() {
+    state_ = RtcSignalingConnectionState::Disconnected;
+    lastError_ = RtcSignalingClientError::None;
+}
+
+bool UnsupportedRtcSignalingClient::Send(const RtcSignalingMessage&) {
+    ++stats_.sendFailures;
+    lastError_ = RtcSignalingClientError::NotImplemented;
+    return false;
+}
+
+std::optional<RtcSignalingMessage> UnsupportedRtcSignalingClient::Poll() {
+    return std::nullopt;
+}
+
+RtcSignalingConnectionState UnsupportedRtcSignalingClient::State() const noexcept {
+    return state_;
+}
+
+RtcSignalingClientStats UnsupportedRtcSignalingClient::Stats() const noexcept {
+    return stats_;
+}
+
+RtcSignalingClientError UnsupportedRtcSignalingClient::LastError() const noexcept {
+    return lastError_;
+}
+
 } // namespace game::net

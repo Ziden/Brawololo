@@ -9,11 +9,17 @@ namespace game::net {
 
 enum class RemoteTransportKind {
     KcpRtc,
+    KcpRtcPumped,
+};
+
+enum class RtcBackendKind {
+    UnsupportedNative,
 };
 
 struct RemoteTransportConfig {
     RemoteTransportKind kind{RemoteTransportKind::KcpRtc};
     KcpRtcTransportConfig kcpRtc{};
+    RtcBackendKind rtcBackend{RtcBackendKind::UnsupportedNative};
 };
 
 [[nodiscard]] std::unique_ptr<ITransport> CreateRemoteTransport(const RemoteTransportConfig& config);

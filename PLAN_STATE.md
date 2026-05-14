@@ -20,12 +20,16 @@ The project is in a late scaffold/early playable-slice phase. It is not yet a fi
 - `Networking` now owns `IRtcSignalingClient`, `InMemoryRtcSignalingClient`, and `InMemoryRtcSignalingHub`, giving native tests/tools a real signaling service path that routes serialized signaling DTOs by session and peer target.
 - `Networking` now owns `PumpKcpRtcSignaling`, the adapter that moves queued `KcpRtcTransport` signals through an `IRtcSignalingClient` and feeds received signals back into the transport.
 - `Networking` now owns `IRtcDataChannel`, `InMemoryRtcDataChannel`, and `PumpKcpRtcDataChannel`, giving the RTC transport a tested byte-frame IO seam for future libdatachannel callbacks.
+- `Networking` now owns explicit unsupported native RTC backends that report `NotImplemented` through the normal `ITransport` error path until real native/browser implementations exist.
+- `KcpRtcTransport` exposes `NotifyDataChannelReady`, the explicit callback a real WebRTC data-channel backend should call when its channel opens.
+- `Networking` now owns `KcpRtcPumpedTransport` and `CreateInMemoryKcpRtcTransportPair`, a full `ITransport` wrapper that pumps signaling and data-channel frames around `KcpRtcTransport`.
 - `Networking` now includes `MultiClientLoopbackTransport`, a peer-addressed loopback transport that routes multiple remote client endpoints through one server transport for architecture tests and future local workflows.
 - `KcpRtcTransport` has explicit role/config fields, async signaling state, outgoing signaling queues, encoded outgoing data-channel frames, and incoming frame decode hooks for the future libdatachannel/KCP adapter.
-- `Networking` exposes `CreateRemoteTransport`, a factory seam that constructs the configured remote transport without leaking KCP/WebRTC details into client code.
+- `Networking` exposes `CreateRemoteTransport`, a factory seam that constructs raw or pumped RTC transports without leaking KCP/WebRTC details into client code.
 - `RemoteClientSession` supports async transport connection and defers login until the transport reports `Connected`.
 - Same-process mode runs client and server through loopback transport and the same serialized protocol path as remote networking.
 - Browser builds use a separate Raylib/Emscripten entrypoint with `LocalPreviewClientSession`, so the client can compile without `ServerCore` and preview local prediction while real WebRTC transport is pending.
+- `RtcSmoke` verifies one real `RemoteClientSession` and one `ServerNetworkHost` can exchange login, input, snapshots, and ACKs through the pumped RTC transport path.
 - Current native verification has been green with `cmake --build --preset vs2022-debug`, `ctest --preset vs2022-debug`, `Server.exe`, `SingleProcess.exe`, and `TwoClientSmoke.exe`.
 
 ## Current Gameplay
@@ -41,6 +45,7 @@ The project is in a late scaffold/early playable-slice phase. It is not yet a fi
 ## Missing For Final Playable
 - Wire live libdatachannel/KCP peer callbacks behind the existing `KcpRtcTransport` signaling/frame/data-channel boundary.
 - Replace or complement the in-memory signaling path with a real native/browser signaling backend.
+- Replace or complement the in-memory data-channel path with real libdatachannel-backed frame IO.
 
 ## Milestones To Final Playable Version
 1. Done: combat outcome loop with bow hit damage, death state, respawn timer, health snapshots, and damage/death/respawn domain events.
@@ -58,13 +63,15 @@ The project is in a late scaffold/early playable-slice phase. It is not yet a fi
 13. Done: remote transport packet/signaling runway with `TransportPacketCodec`, `RtcSignalingMessage`, `KcpRtcTransport` signaling/data-channel queues, and async `RemoteClientSession` login.
 14. Partially done: native signaling service path through `IRtcSignalingClient`, `InMemoryRtcSignalingClient`, and `PumpKcpRtcSignaling`; live libdatachannel peer callbacks remain.
 15. Partially done: data-channel byte IO path through `IRtcDataChannel`, `InMemoryRtcDataChannel`, and `PumpKcpRtcDataChannel`; live libdatachannel data-channel callbacks remain.
-16. Native remote transport implementation: wire actual libdatachannel callbacks and real signaling IO into the existing `KcpRtcTransport` boundary.
-17. Browser multiplayer implementation: connect the Emscripten client to WebRTC data channels once `KcpRtcTransport` is live.
+16. Done: pumped RTC transport wrapper through `KcpRtcPumpedTransport`, `NotifyDataChannelReady`, and `CreateInMemoryKcpRtcTransportPair`.
+17. Done: RTC transport smoke workflow through `RtcSmoke`, covering `RemoteClientSession` plus `ServerNetworkHost` over the pumped RTC path.
+18. Done: backend selection/error reporting through `RtcBackendKind`, unsupported native RTC backends, and pumped RTC factory mode.
+19. Native remote transport implementation: wire actual libdatachannel callbacks and real signaling IO into the existing `KcpRtcTransport` boundary.
+20. Browser multiplayer implementation: connect the Emscripten client to WebRTC data channels once `KcpRtcTransport` is live.
 
 ## Current Priority
 The next implementation slice should attach real WebRTC/data-channel IO to the remote networking boundary:
 - Add libdatachannel peer/data-channel callbacks that feed `ReceiveSignalingMessage`, `ReceiveFrame`, `PollOutgoingSignal`, and `PollOutgoingFrame`.
-- Add or choose a production signaling backend that implements `IRtcSignalingClient` for native/browser workflows.
-- Add or choose a production data-channel backend that implements `IRtcDataChannel` for native/browser workflows.
+- Replace `RtcBackendKind::UnsupportedNative` with production signaling and data-channel backends that implement `IRtcSignalingClient` and `IRtcDataChannel`.
 - Keep `CreateRemoteTransport` as the construction boundary for native and browser clients.
 - Keep `TwoClientSmoke`, `Smoke.MinimalPlayable`, and `SingleProcess` as native regression checks while remote transport is implemented.

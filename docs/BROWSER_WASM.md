@@ -28,8 +28,13 @@ Raw UDP is not browser-safe. Browser multiplayer should use:
 - KCP-style reliability/ordering policy inside or above the data channel where useful.
 - `RtcSignalingMessage` for join/offer/answer/ICE/data-channel-ready exchange.
 - `IRtcSignalingClient` as the boundary a browser signaling backend should implement.
+- `IRtcDataChannel` as the boundary browser WebRTC data-channel callbacks should implement.
 - `TransportPacketCodec` for byte-level `NetworkEnvelope` frames once a data channel is open.
 - `NetworkEnvelope::peerId` only as routing metadata, never gameplay identity.
 - `ClientInputPacket`, snapshots, reliable events, ACKs, and time sync exactly as native clients use them.
 
-`KcpRtcTransport` is currently a safe scaffold seam. It validates config/protocol/state, starts async signaling, queues outgoing signaling DTOs, and encodes/decodes data-channel frames. `PumpKcpRtcSignaling` can move those signals through any `IRtcSignalingClient`. The browser still needs a real signaling backend and WebRTC data-channel callbacks.
+`KcpRtcTransport` is currently a safe scaffold seam. It validates config/protocol/state, starts async signaling, queues outgoing signaling DTOs, and encodes/decodes data-channel frames. `PumpKcpRtcSignaling` can move those signals through any `IRtcSignalingClient`; `PumpKcpRtcDataChannel` can move encoded frames through any `IRtcDataChannel`. The browser still needs real signaling and WebRTC data-channel backends.
+
+`KcpRtcPumpedTransport` proves the shape of that composition for native tests by wrapping a `KcpRtcTransport`, signaling client, and data channel as one `ITransport`. A browser implementation should use the same composition idea, with browser-backed `IRtcSignalingClient` and `IRtcDataChannel` implementations.
+
+Until those browser/native backends exist, the factory-supported production backend kind is explicit unsupported behavior: connection attempts fail with `TransportError::NotImplemented` rather than silently falling back to fake networking.

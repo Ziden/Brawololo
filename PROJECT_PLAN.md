@@ -17,7 +17,7 @@ The architecture targets server-authoritative consistency, not cross-platform lo
 - `GameLogic`: ECS components/systems, integer/fixed-point movement, command handlers, event queue, data-driven weapon definitions, network event DTOs, local prediction helpers, reconciliation helpers, serialization DTOs, map/chunk AOI, bow warmup, arrows, damage/death/respawn, and server-authoritative projectile/combat rules.
 - `Client`: sequence-numbered `ClientInputPacket`s, snapshot acknowledgements, reliable-event acknowledgements, connection-state tracking, local prediction, render-time interpolation, event-driven view hooks, renderer-agnostic cosmetic combat effects, split Raylib scene/debug rendering, browser preview entrypoint, routed two-client smoke workflow, and local-only reconciliation replay.
 - `Server`: authoritative tick loop, command validation, input ack tracking, snapshot ack tracking, reliable event delivery tracking with bounded resend/backoff, per-client replication state, stale command rejection, lag-compensation history, server-owned arrows/hits, simulation-only test drivers, prioritized snapshots, per-client snapshot cadence, delta placeholder planning, reliable AOI spawn/despawn events, and chunk-filtered AOI replication for up to `256` players.
-- `Networking`: message classes and channels for movement/input, snapshots, combat events, login/spawn, interest events, time sync, and chat/UI. The first concrete transports are point-to-point loopback and peer-addressed multi-client loopback; the KCP/libdatachannel adapter is isolated behind `ITransport`, constructed through `CreateRemoteTransport`, and has explicit RTC signaling client plus byte-frame codec seams.
+- `Networking`: message classes and channels for movement/input, snapshots, combat events, login/spawn, interest events, time sync, and chat/UI. The first concrete transports are point-to-point loopback, peer-addressed multi-client loopback, and in-memory pumped RTC smoke transport; the KCP/libdatachannel adapter is isolated behind `ITransport`, constructed through `CreateRemoteTransport`, and has explicit RTC signaling/data-channel plus byte-frame codec seams.
 - `Time`: `NetworkClock`, `TimeSyncRequest`, and `TimeSyncResponse` support RTT estimates, client/server offset, interpolation delay, and client timestamp to server time mapping.
 - `Replication`: snapshots reserve `snapshotId`, `baselineId`, and delivery kind from day one, even when the first implementation sends full state.
 
@@ -48,7 +48,7 @@ The architecture targets server-authoritative consistency, not cross-platform lo
 ## Assumptions
 - KCP + libdatachannel replaces ENet for the initial scaffold.
 - Browser support is designed around WebRTC-style data channels rather than raw UDP.
-- Browser preview currently uses `LocalPreviewClientSession`; live browser multiplayer waits on real WebRTC IO behind the existing `KcpRtcTransport` signaling/frame boundary.
+- Browser preview currently uses `LocalPreviewClientSession`; live browser multiplayer waits on real WebRTC IO behind the existing `KcpRtcTransport` signaling/frame/data-channel boundary.
 - Single-player means an authoritative server and client running in the same process through loopback transport.
 - Simulation correctness and server authority are preferred over hiding latency with client-owned gameplay truth.
 - The first scaffold targets a clean vertical slice and testable architecture, not matchmaking, persistence, accounts, anti-cheat, or production deployment.

@@ -58,6 +58,8 @@ public:
 
     [[nodiscard]] KcpRtcConnectionPhase Phase() const noexcept;
     [[nodiscard]] KcpRtcTransportDiagnostics Diagnostics() const noexcept;
+    [[nodiscard]] game::ClientId RemotePeerId() const noexcept;
+    [[nodiscard]] bool NotifyDataChannelReady();
     [[nodiscard]] std::optional<RtcSignalingMessage> PollOutgoingSignal();
     [[nodiscard]] bool ReceiveSignalingMessage(const RtcSignalingMessage& message);
     [[nodiscard]] std::optional<std::vector<std::byte>> PollOutgoingFrame();
@@ -74,10 +76,12 @@ private:
     TransportStats stats_{};
     TransportError lastError_{TransportError::None};
     std::uint32_t nextSignalSequence_{1};
+    game::ClientId remotePeerId_{};
     std::queue<RtcSignalingMessage> outgoingSignals_{};
     std::queue<std::vector<std::byte>> outgoingFrames_{};
     std::queue<game::NetworkEnvelope> incomingEnvelopes_{};
     std::size_t bufferedOutgoingFrameBytes_{};
+    bool localDataChannelReady_{};
 };
 
 } // namespace game::net

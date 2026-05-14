@@ -67,6 +67,14 @@ All envelopes carry a protocol version and are validated before transport delive
 
 `PumpKcpRtcSignaling` connects the two seams: it drains queued signals from `KcpRtcTransport` into an `IRtcSignalingClient`, then applies incoming signaling messages back to the transport. Real native/browser signaling backends should implement `IRtcSignalingClient` and use the same pump.
 
+`IRtcDataChannel` is the byte-frame data-channel boundary. `InMemoryRtcDataChannel` provides a same-process channel pair for tests/tools, and `PumpKcpRtcDataChannel` moves encoded frames from `KcpRtcTransport` into the channel and received frames back into the transport. Real libdatachannel callbacks should implement this boundary rather than reaching into gameplay protocol code.
+
+Unsupported native RTC signaling/data-channel backends exist on purpose. They map to `TransportError::NotImplemented` through `KcpRtcPumpedTransport`, so production backend selection fails loudly and predictably until real libdatachannel/browser implementations are available.
+
+`KcpRtcTransport::NotifyDataChannelReady` is the explicit "data channel opened" callback. A real libdatachannel backend should call it when its channel opens; the transport then queues a reliable signaling notification and allows normal `ITransport` sends.
+
+`KcpRtcPumpedTransport` composes a `KcpRtcTransport`, an `IRtcSignalingClient`, and an `IRtcDataChannel` into one normal `ITransport`. `CreateInMemoryKcpRtcTransportPair` uses that wrapper to provide a same-process RTC-shaped client/server pair for smoke tests without bypassing the protocol pumps. `CreateRemoteTransport` can also construct the pumped shape with configured backend kind, currently defaulting to explicit unsupported native backends.
+
 `KcpRtcTransport` is now async by shape: `Connect` starts signaling and enters `Connecting`; data-channel readiness moves it to `Connected`; `Send` queues encoded frames; `ReceiveFrame` decodes bytes into pollable envelopes. The missing piece is the real libdatachannel/KCP callback wiring, not the game/session protocol boundary.
 
 `ITransport` exposes lifecycle and diagnostics: `Connect`, `Update`, `Close`, state, last error, and envelope/byte stats. Concrete transports should reject invalid envelopes and report `TransportError` instead of letting protocol problems leak into gameplay code.
@@ -97,6 +105,8 @@ The client layer is split into clear seams:
 Same-process mode is implemented as `InProcessClientSession`, an adapter that wires `ServerNetworkHost` and `LoopbackTransport` through the same serialized protocol path used by real networking. Simulation-only dummy clients can exist inside the server without becoming network clients that receive snapshots. `SimulationOnlyClientDriver` keeps this clean by submitting ordinary sequence-numbered `ClientInputPacket`s to `ServerRuntime` for those opponents. The bridge must not become a second client implementation.
 
 `TwoClientSmoke` is the non-visual real-client workflow check. It composes two `ClientApplication` instances, two `RemoteClientSession`s, `MultiClientLoopbackTransport`, and one `ServerNetworkHost`; it does not bypass protocol pumping or use simulation-only clients.
+
+`RtcSmoke` is the non-visual RTC-shaped workflow check. It composes one `RemoteClientSession`, one `ServerNetworkHost`, and an in-memory pumped RTC transport pair. It verifies the remote client/server protocol path can run through signaling, byte-frame encoding, and data-channel pumping before a real libdatachannel backend exists.
 
 Browser builds use `browser_main.cpp` and `LocalPreviewClientSession`. This keeps the Raylib/Emscripten build free of `ServerCore`, uses the browser-safe main loop, and allows visual/local-prediction smoke testing while live WebRTC transport remains pending. It does not create authoritative combat or fake snapshot ACKs.
 

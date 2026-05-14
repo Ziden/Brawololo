@@ -36,6 +36,8 @@ void KcpRtcTransport::Close() {
     outgoingFrames_ = {};
     incomingEnvelopes_ = {};
     bufferedOutgoingFrameBytes_ = 0;
+    remotePeerId_ = 0;
+    localDataChannelReady_ = false;
 }
 
 bool KcpRtcTransport::Send(const game::NetworkEnvelope& envelope) {
@@ -92,6 +94,26 @@ KcpRtcTransportDiagnostics KcpRtcTransport::Diagnostics() const noexcept {
     };
 }
 
+game::ClientId KcpRtcTransport::RemotePeerId() const noexcept {
+    return remotePeerId_;
+}
+
+bool KcpRtcTransport::NotifyDataChannelReady() {
+    if (state_ == TransportState::Disconnected || state_ == TransportState::Failed) {
+        lastError_ = TransportError::NotConnected;
+        return false;
+    }
+
+    if (!localDataChannelReady_) {
+        QueueSignal(RtcSignalingMessageKind::DataChannelReady, remotePeerId_, {});
+        localDataChannelReady_ = true;
+    }
+
+    TransitionToConnected();
+    lastError_ = TransportError::None;
+    return true;
+}
+
 std::optional<RtcSignalingMessage> KcpRtcTransport::PollOutgoingSignal() {
     if (outgoingSignals_.empty()) {
         return std::nullopt;
@@ -113,6 +135,8 @@ bool KcpRtcTransport::ReceiveSignalingMessage(const RtcSignalingMessage& message
         lastError_ = TransportError::ProtocolRejected;
         return false;
     }
+
+    remotePeerId_ = message.senderPeerId;
 
     switch (message.kind) {
         case RtcSignalingMessageKind::Offer:

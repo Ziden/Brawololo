@@ -25,3 +25,7 @@ if(TARGET TwoClientSmoke)
     add_test(NAME Smoke.TwoClient COMMAND TwoClientSmoke)
     add_test(NAME Smoke.MinimalPlayable COMMAND TwoClientSmoke)
 endif()
+
+if(TARGET RtcSmoke)
+    add_test(NAME Smoke.RtcTransport COMMAND RtcSmoke)
+endif()

@@ -19,6 +19,7 @@ enum class RtcDataChannelState {
 enum class RtcDataChannelError {
     None,
     NotOpen,
+    NotImplemented,
     BufferFull,
     InvalidFrame,
 };
@@ -77,6 +78,19 @@ private:
     RtcDataChannelState stateValue_{RtcDataChannelState::Closed};
     RtcDataChannelStats stats_{};
     RtcDataChannelError lastError_{RtcDataChannelError::None};
+};
+
+class UnsupportedRtcDataChannel final : public IRtcDataChannel {
+public:
+    [[nodiscard]] bool SendFrame(std::span<const std::byte> bytes) override;
+    [[nodiscard]] std::optional<std::vector<std::byte>> PollFrame() override;
+    [[nodiscard]] RtcDataChannelState State() const noexcept override;
+    [[nodiscard]] RtcDataChannelStats Stats() const noexcept override;
+    [[nodiscard]] RtcDataChannelError LastError() const noexcept override;
+
+private:
+    RtcDataChannelStats stats_{};
+    RtcDataChannelError lastError_{RtcDataChannelError::NotImplemented};
 };
 
 } // namespace game::net

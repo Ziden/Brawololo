@@ -6,6 +6,7 @@
 #include "GameLogic/Serialization.hpp"
 #include "Networking/KcpRtcTransport.hpp"
 #include "Networking/KcpRtcDataChannelPump.hpp"
+#include "Networking/KcpRtcPumpedTransport.hpp"
 #include "Networking/KcpRtcSignalingPump.hpp"
 #include "Networking/LoopbackTransport.hpp"
 #include "Networking/MultiClientLoopbackTransport.hpp"
@@ -600,6 +601,91 @@ void TestKcpRtcDataChannelPumpMovesFramesBetweenTransports() {
     Expect(receivedSnapshot->sequence == snapshot.sequence, "client receives snapshot sequence");
 }
 
+void TestUnsupportedRtcBackendsReportNotImplemented() {
+    game::net::UnsupportedRtcSignalingClient signaling{};
+    Expect(!signaling.Connect(), "unsupported signaling client refuses to connect");
+    Expect(signaling.LastError() == game::net::RtcSignalingClientError::NotImplemented,
+           "unsupported signaling reports not implemented");
+
+    game::net::UnsupportedRtcDataChannel dataChannel{};
+    const std::vector<std::byte> frame{std::byte{0x01}};
+    Expect(!dataChannel.SendFrame(frame), "unsupported data channel refuses to send");
+    Expect(dataChannel.LastError() == game::net::RtcDataChannelError::NotImplemented,
+           "unsupported data channel reports not implemented");
+}
+
+void TestPumpedKcpRtcTransportConnectsAndMovesEnvelopes() {
+    auto transports = game::net::CreateInMemoryKcpRtcTransportPair(
+        game::net::InMemoryKcpRtcTransportPairConfig{1, 2, "match-one"});
+    auto& clientTransport = transports.first;
+    auto& serverTransport = transports.second;
+
+    Expect(serverTransport->Connect(), "pumped rtc server transport starts async connection");
+    Expect(clientTransport->Connect(), "pumped rtc client transport starts async connection");
+
+    for (int step = 0; step < 8 &&
+                       (clientTransport->State() != game::net::TransportState::Connected ||
+                        serverTransport->State() != game::net::TransportState::Connected);
+         ++step) {
+        clientTransport->Update();
+        serverTransport->Update();
+    }
+
+    Expect(clientTransport->State() == game::net::TransportState::Connected,
+           "pumped rtc client reaches connected state");
+    Expect(serverTransport->State() == game::net::TransportState::Connected,
+           "pumped rtc server reaches connected state");
+
+    game::NetworkEnvelope input{};
+    input.peerId = 1;
+    input.channel = game::NetworkChannel::MovementInput;
+    input.messageClass = game::MessageClass::ClientInput;
+    input.sequence = 12;
+    input.payload = {std::byte{0xA0}};
+    Expect(clientTransport->Send(input), "pumped rtc client sends envelope");
+
+    serverTransport->Update();
+    const auto receivedInput = serverTransport->Poll();
+    Expect(receivedInput.has_value(), "pumped rtc server polls envelope");
+    Expect(receivedInput->sequence == input.sequence, "pumped rtc preserves input sequence");
+
+    game::NetworkEnvelope snapshot{};
+    snapshot.peerId = 1;
+    snapshot.channel = game::NetworkChannel::Snapshots;
+    snapshot.messageClass = game::MessageClass::Snapshot;
+    snapshot.sequence = 13;
+    snapshot.payload = {std::byte{0xB0}, std::byte{0xB1}};
+    Expect(serverTransport->Send(snapshot), "pumped rtc server sends envelope");
+
+    clientTransport->Update();
+    const auto receivedSnapshot = clientTransport->Poll();
+    Expect(receivedSnapshot.has_value(), "pumped rtc client polls envelope");
+    Expect(receivedSnapshot->payload == snapshot.payload, "pumped rtc preserves snapshot payload");
+}
+
+void TestRemoteTransportFactoryCreatesUnsupportedPumpedRtcTransport() {
+    const auto transport = game::net::CreateRemoteTransport(game::net::RemoteTransportConfig{
+        game::net::RemoteTransportKind::KcpRtcPumped,
+        game::net::KcpRtcTransportConfig{
+            game::net::KcpRtcRole::Client,
+            5,
+            "client-five",
+            "wss://signaling.example.invalid",
+            "game",
+            1024U * 1024U,
+            true,
+            "match-one",
+        },
+        game::net::RtcBackendKind::UnsupportedNative,
+    });
+
+    Expect(transport != nullptr, "remote factory creates pumped rtc transport");
+    Expect(!transport->Connect(),
+           "pumped rtc transport with unsupported native backend refuses connection");
+    Expect(transport->LastError() == game::net::TransportError::NotImplemented,
+           "pumped rtc transport maps unsupported backend to transport not implemented");
+}
+
 void TestRemoteTransportFactoryCreatesKcpRtcTransport() {
     const auto transport = game::net::CreateRemoteTransport(game::net::RemoteTransportConfig{
         game::net::RemoteTransportKind::KcpRtc,
@@ -674,6 +760,18 @@ TEST(NetworkingTests, InMemoryRtcDataChannelRoutesFrames) {
 
 TEST(NetworkingTests, KcpRtcDataChannelPumpMovesFramesBetweenTransports) {
     TestKcpRtcDataChannelPumpMovesFramesBetweenTransports();
+}
+
+TEST(NetworkingTests, UnsupportedRtcBackendsReportNotImplemented) {
+    TestUnsupportedRtcBackendsReportNotImplemented();
+}
+
+TEST(NetworkingTests, PumpedKcpRtcTransportConnectsAndMovesEnvelopes) {
+    TestPumpedKcpRtcTransportConnectsAndMovesEnvelopes();
+}
+
+TEST(NetworkingTests, RemoteTransportFactoryCreatesUnsupportedPumpedRtcTransport) {
+    TestRemoteTransportFactoryCreatesUnsupportedPumpedRtcTransport();
 }
 
 TEST(NetworkingTests, RemoteTransportFactoryCreatesKcpRtcTransport) {
