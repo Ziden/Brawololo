@@ -25,7 +25,7 @@ jobs:
             xargs -r clang-format --dry-run --Werror
 
   windows-debug:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -34,10 +34,10 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure Visual Studio debug preset
-        run: cmake --preset native-debug
+        run: cmake --preset vs2022-debug
 
       - name: Build test target
-        run: cmake --build --preset native-debug --target ScaffoldTests
+        run: cmake --build --preset vs2022-debug --target ScaffoldTests
 
       - name: Run tests
-        run: ctest --preset native-debug
+        run: ctest --preset vs2022-debug

@@ -15,6 +15,8 @@ const char* ConnectionStateName(ClientConnectionState state) {
             return "Awaiting spawn";
         case ClientConnectionState::Connected:
             return "Connected";
+        case ClientConnectionState::LocalPreview:
+            return "Local preview";
     }
 
     return "Unknown";

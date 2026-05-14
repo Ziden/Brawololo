@@ -19,6 +19,8 @@ public:
     [[nodiscard]] ClientSessionStats Stats() const noexcept override;
 
 private:
+    [[nodiscard]] bool TrySendLogin(game::TimestampMs nowMs);
+
     std::unique_ptr<game::net::ITransport> transport_{};
     ClientSessionStats stats_{};
     game::ClientId localClientId_{};
@@ -26,7 +28,8 @@ private:
     game::TimestampMs lastTickTimeMs_{};
     game::CommandSequence nextTimeSyncSequence_{1};
     game::EventList reliableEvents_{};
-    bool connected_{};
+    bool sessionActive_{};
+    bool loginSent_{};
 };
 
 } // namespace game::client

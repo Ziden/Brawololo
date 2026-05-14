@@ -20,7 +20,8 @@ public:
     [[nodiscard]] bool Tick(class ServerRuntime& runtime, game::TimestampMs nowMs);
 
 private:
-    [[nodiscard]] game::InputFrame BuildInput(const class ServerRuntime& runtime, bool shouldFire) const;
+    [[nodiscard]] game::InputFrame BuildInput(const class ServerRuntime& runtime,
+                                              bool shouldFire) const;
 
     SimulationOnlyClientDriverConfig config_{};
     game::CommandSequence nextSequence_{1};

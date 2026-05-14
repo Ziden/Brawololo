@@ -198,7 +198,8 @@ void ServerNetworkHost::MarkSnapshotSent(game::ClientId clientId, game::Timestam
     }
 }
 
-void ServerNetworkHost::BroadcastReliableEvents(const game::EventList& events, game::TimestampMs nowMs) {
+void ServerNetworkHost::BroadcastReliableEvents(const game::EventList& events,
+                                                game::TimestampMs nowMs) {
     for (const auto& event : events) {
         const auto networkEvent = game::ToNetworkEventDTO(nextNetworkEventId_++,
                                                           runtime_.Simulation().CurrentTick(),
@@ -231,36 +232,33 @@ void ServerNetworkHost::BroadcastReliableEvents(const game::EventList& events, g
 void ServerNetworkHost::ResendPendingReliableEvents(game::TimestampMs nowMs) {
     for (auto& [clientId, state] : clientStateById_) {
         const auto dueEvents = state.ReliableEventsDueForResend(
-            nowMs,
-            config_.reliableEventResendBaseIntervalMs,
-            config_.reliableEventMaxSendCount);
+            nowMs, config_.reliableEventResendBaseIntervalMs, config_.reliableEventMaxSendCount);
         for (const auto& event : dueEvents) {
             SendReliableEvent(clientId, event, nowMs, true);
         }
     }
 }
 
-void ServerNetworkHost::SendInterestEvents(
-    game::ClientId clientId,
-    const game::InterestFrame& interestFrame,
-    game::TimestampMs nowMs) {
+void ServerNetworkHost::SendInterestEvents(game::ClientId clientId,
+                                           const game::InterestFrame& interestFrame,
+                                           game::TimestampMs nowMs) {
     for (const auto entityId : interestFrame.entered) {
-        const auto networkEvent = game::ToNetworkEventDTO(
-            nextNetworkEventId_++,
-            runtime_.Simulation().CurrentTick(),
-            runtime_.Simulation().ServerTimeMs(),
-            game::EntityEnteredInterest{entityId, clientId});
+        const auto networkEvent =
+            game::ToNetworkEventDTO(nextNetworkEventId_++,
+                                    runtime_.Simulation().CurrentTick(),
+                                    runtime_.Simulation().ServerTimeMs(),
+                                    game::EntityEnteredInterest{entityId, clientId});
         if (networkEvent.has_value()) {
             SendReliableEvent(clientId, *networkEvent, nowMs);
         }
     }
 
     for (const auto entityId : interestFrame.exited) {
-        const auto networkEvent = game::ToNetworkEventDTO(
-            nextNetworkEventId_++,
-            runtime_.Simulation().CurrentTick(),
-            runtime_.Simulation().ServerTimeMs(),
-            game::EntityLeftInterest{entityId, clientId});
+        const auto networkEvent =
+            game::ToNetworkEventDTO(nextNetworkEventId_++,
+                                    runtime_.Simulation().CurrentTick(),
+                                    runtime_.Simulation().ServerTimeMs(),
+                                    game::EntityLeftInterest{entityId, clientId});
         if (networkEvent.has_value()) {
             SendReliableEvent(clientId, *networkEvent, nowMs);
         }

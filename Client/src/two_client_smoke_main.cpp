@@ -17,8 +17,7 @@ struct CombatEventCounters {
     std::size_t respawns{};
 };
 
-void CountCombatEvents(const game::EventList& events, CombatEventCounters& counters)
-{
+void CountCombatEvents(const game::EventList& events, CombatEventCounters& counters) {
     for (const auto& event : events) {
         if (std::holds_alternative<game::HitConfirmed>(event)) {
             ++counters.hits;
@@ -32,8 +31,7 @@ void CountCombatEvents(const game::EventList& events, CombatEventCounters& count
     }
 }
 
-game::InputFrame ScriptedInputFor(game::ClientId clientId, int tick)
-{
+game::InputFrame ScriptedInputFor(game::ClientId clientId, int tick) {
     game::InputFrame input{};
     input.aimX = clientId == 1 ? 1000 : -1000;
     input.aimY = 0;
@@ -41,10 +39,9 @@ game::InputFrame ScriptedInputFor(game::ClientId clientId, int tick)
     return input;
 }
 
-std::unique_ptr<game::client::RemoteClientSession> MakeRemoteSession(
-    const std::shared_ptr<game::net::MultiClientLoopbackTransport::Hub>& hub,
-    game::ClientId clientId)
-{
+std::unique_ptr<game::client::RemoteClientSession>
+MakeRemoteSession(const std::shared_ptr<game::net::MultiClientLoopbackTransport::Hub>& hub,
+                  game::ClientId clientId) {
     auto transport = std::make_unique<game::net::MultiClientLoopbackTransport>(
         game::net::MultiClientLoopbackTransport::CreateClient(hub, clientId));
     return std::make_unique<game::client::RemoteClientSession>(std::move(transport));
@@ -52,18 +49,15 @@ std::unique_ptr<game::client::RemoteClientSession> MakeRemoteSession(
 
 } // namespace
 
-int main()
-{
+int main() {
     const auto hub = game::net::MultiClientLoopbackTransport::CreateHub();
     auto serverTransport = game::net::MultiClientLoopbackTransport::CreateServer(hub);
     game::server::ServerNetworkHost serverHost{serverTransport};
 
-    game::client::ClientApplication clientOne{
-        MakeRemoteSession(hub, 1),
-        game::client::ClientApplicationConfig{1}};
-    game::client::ClientApplication clientTwo{
-        MakeRemoteSession(hub, 2),
-        game::client::ClientApplicationConfig{2}};
+    game::client::ClientApplication clientOne{MakeRemoteSession(hub, 1),
+                                              game::client::ClientApplicationConfig{1}};
+    game::client::ClientApplication clientTwo{MakeRemoteSession(hub, 2),
+                                              game::client::ClientApplicationConfig{2}};
 
     if (!clientOne.Connect(0) || !clientTwo.Connect(0)) {
         std::cerr << "Failed to connect remote client applications\n";
@@ -92,30 +86,17 @@ int main()
     const auto clientOneStats = clientOne.Stats();
     const auto clientTwoStats = clientTwo.Stats();
 
-    const auto ok = serverStats.connectedClients == 2 &&
-        serverStats.inputsReceived >= 100 &&
-        clientOneStats.session.snapshotsApplied > 0 &&
-        clientTwoStats.session.snapshotsApplied > 0 &&
-        combatEvents.hits > 0 &&
-        combatEvents.damaged > 0;
+    const auto ok = serverStats.connectedClients == 2 && serverStats.inputsReceived >= 100 &&
+                    clientOneStats.session.snapshotsApplied > 0 &&
+                    clientTwoStats.session.snapshotsApplied > 0 && combatEvents.hits > 0 &&
+                    combatEvents.damaged > 0;
 
-    std::cout << "Two-client smoke ran. Connected clients: "
-              << serverStats.connectedClients
-              << ", inputs: "
-              << serverStats.inputsReceived
-              << ", client snapshots: "
-              << clientOneStats.session.snapshotsApplied
-              << "/"
-              << clientTwoStats.session.snapshotsApplied
-              << ", hits: "
-              << combatEvents.hits
-              << ", damage events: "
-              << combatEvents.damaged
-              << ", deaths: "
-              << combatEvents.deaths
-              << ", respawns: "
-              << combatEvents.respawns
-              << '\n';
+    std::cout << "Two-client smoke ran. Connected clients: " << serverStats.connectedClients
+              << ", inputs: " << serverStats.inputsReceived
+              << ", client snapshots: " << clientOneStats.session.snapshotsApplied << "/"
+              << clientTwoStats.session.snapshotsApplied << ", hits: " << combatEvents.hits
+              << ", damage events: " << combatEvents.damaged << ", deaths: " << combatEvents.deaths
+              << ", respawns: " << combatEvents.respawns << '\n';
 
     if (!ok) {
         std::cerr << "Two-client smoke failed expected multiplayer boundary checks\n";

@@ -107,8 +107,7 @@ void TestServerNetworkHostPlansDeltaPlaceholdersAfterSnapshotAck() {
 
     const auto stats = serverHost.Stats();
     Expect(stats.deltaEligibleSnapshotsSent >= 1, "server marks acked snapshot as delta eligible");
-    Expect(stats.deltaPlaceholderSnapshotsPlanned >= 1,
-           "server computes delta placeholder plan");
+    Expect(stats.deltaPlaceholderSnapshotsPlanned >= 1, "server computes delta placeholder plan");
     Expect(stats.deltaPlaceholderChangedEntities >= 1,
            "delta placeholder records changed entity state");
 }

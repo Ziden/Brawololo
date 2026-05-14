@@ -8,26 +8,20 @@
 namespace game::server {
 namespace {
 
-std::int16_t AimComponentFromRatio(double ratio)
-{
+std::int16_t AimComponentFromRatio(double ratio) {
     return static_cast<std::int16_t>(std::clamp(ratio * 1000.0, -1000.0, 1000.0));
 }
 
 } // namespace
 
 SimulationOnlyClientDriver::SimulationOnlyClientDriver(SimulationOnlyClientDriverConfig config)
-    : config_(config)
-    , nextFireAtMs_(config_.firstFireAtMs)
-{
-}
+    : config_(config), nextFireAtMs_(config_.firstFireAtMs) {}
 
-game::ClientId SimulationOnlyClientDriver::ClientId() const noexcept
-{
+game::ClientId SimulationOnlyClientDriver::ClientId() const noexcept {
     return config_.clientId;
 }
 
-bool SimulationOnlyClientDriver::Tick(ServerRuntime& runtime, game::TimestampMs nowMs)
-{
+bool SimulationOnlyClientDriver::Tick(ServerRuntime& runtime, game::TimestampMs nowMs) {
     const auto shouldFire = nowMs >= nextFireAtMs_;
     auto input = BuildInput(runtime, shouldFire);
     if (shouldFire) {
@@ -42,8 +36,8 @@ bool SimulationOnlyClientDriver::Tick(ServerRuntime& runtime, game::TimestampMs 
     return runtime.SubmitInput(packet);
 }
 
-game::InputFrame SimulationOnlyClientDriver::BuildInput(const ServerRuntime& runtime, bool shouldFire) const
-{
+game::InputFrame SimulationOnlyClientDriver::BuildInput(const ServerRuntime& runtime,
+                                                        bool shouldFire) const {
     game::InputFrame input{};
     input.aimX = 1000;
     input.fire = shouldFire;

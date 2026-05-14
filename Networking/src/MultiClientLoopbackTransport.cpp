@@ -4,36 +4,26 @@
 
 namespace game::net {
 
-std::shared_ptr<MultiClientLoopbackTransport::Hub> MultiClientLoopbackTransport::CreateHub()
-{
+std::shared_ptr<MultiClientLoopbackTransport::Hub> MultiClientLoopbackTransport::CreateHub() {
     return std::make_shared<Hub>();
 }
 
-MultiClientLoopbackTransport MultiClientLoopbackTransport::CreateServer(std::shared_ptr<Hub> hub)
-{
+MultiClientLoopbackTransport MultiClientLoopbackTransport::CreateServer(std::shared_ptr<Hub> hub) {
     return MultiClientLoopbackTransport{std::move(hub), Endpoint::Server};
 }
 
-MultiClientLoopbackTransport MultiClientLoopbackTransport::CreateClient(
-    std::shared_ptr<Hub> hub,
-    game::ClientId clientId)
-{
+MultiClientLoopbackTransport MultiClientLoopbackTransport::CreateClient(std::shared_ptr<Hub> hub,
+                                                                        game::ClientId clientId) {
     return MultiClientLoopbackTransport{std::move(hub), Endpoint::Client, clientId};
 }
 
-MultiClientLoopbackTransport::MultiClientLoopbackTransport(
-    std::shared_ptr<Hub> hub,
-    Endpoint endpoint,
-    game::ClientId clientId)
-    : hub_(std::move(hub))
-    , endpoint_(endpoint)
-    , clientId_(clientId)
-    , state_(TransportState::Connected)
-{
-}
+MultiClientLoopbackTransport::MultiClientLoopbackTransport(std::shared_ptr<Hub> hub,
+                                                           Endpoint endpoint,
+                                                           game::ClientId clientId)
+    : hub_(std::move(hub)), endpoint_(endpoint), clientId_(clientId),
+      state_(TransportState::Connected) {}
 
-bool MultiClientLoopbackTransport::Connect()
-{
+bool MultiClientLoopbackTransport::Connect() {
     if (!hub_) {
         state_ = TransportState::Failed;
         lastError_ = TransportError::NotConnected;
@@ -45,17 +35,13 @@ bool MultiClientLoopbackTransport::Connect()
     return true;
 }
 
-void MultiClientLoopbackTransport::Update()
-{
-}
+void MultiClientLoopbackTransport::Update() {}
 
-void MultiClientLoopbackTransport::Close()
-{
+void MultiClientLoopbackTransport::Close() {
     state_ = TransportState::Disconnected;
 }
 
-bool MultiClientLoopbackTransport::Send(const game::NetworkEnvelope& envelope)
-{
+bool MultiClientLoopbackTransport::Send(const game::NetworkEnvelope& envelope) {
     if (!hub_ || state_ != TransportState::Connected) {
         lastError_ = TransportError::NotConnected;
         ++stats_.sendFailures;
@@ -87,8 +73,7 @@ bool MultiClientLoopbackTransport::Send(const game::NetworkEnvelope& envelope)
     return true;
 }
 
-std::optional<game::NetworkEnvelope> MultiClientLoopbackTransport::Poll()
-{
+std::optional<game::NetworkEnvelope> MultiClientLoopbackTransport::Poll() {
     if (!hub_ || state_ != TransportState::Connected) {
         return std::nullopt;
     }
@@ -112,18 +97,15 @@ std::optional<game::NetworkEnvelope> MultiClientLoopbackTransport::Poll()
     return envelope;
 }
 
-TransportState MultiClientLoopbackTransport::State() const noexcept
-{
+TransportState MultiClientLoopbackTransport::State() const noexcept {
     return state_;
 }
 
-TransportStats MultiClientLoopbackTransport::Stats() const noexcept
-{
+TransportStats MultiClientLoopbackTransport::Stats() const noexcept {
     return stats_;
 }
 
-TransportError MultiClientLoopbackTransport::LastError() const noexcept
-{
+TransportError MultiClientLoopbackTransport::LastError() const noexcept {
     return lastError_;
 }
 

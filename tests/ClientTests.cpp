@@ -4,6 +4,7 @@
 #include "Client/ClientVisualEffectLog.hpp"
 #include "Client/FixedStepClock.hpp"
 #include "Client/InProcessClientSession.hpp"
+#include "Client/LocalPreviewClientSession.hpp"
 #include "Client/RemoteClientSession.hpp"
 #include "GameLogic/Commands.hpp"
 #include "Networking/LoopbackTransport.hpp"
@@ -13,11 +14,80 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 namespace {
 
 using test_support::ContainsEvent;
 using test_support::Expect;
+
+class AsyncConnectTransport final : public game::net::ITransport {
+public:
+    [[nodiscard]] bool Connect() override {
+        state_ = game::net::TransportState::Connecting;
+        return true;
+    }
+
+    void Update() override {
+        ++updates_;
+        if (updates_ >= 2) {
+            state_ = game::net::TransportState::Connected;
+        }
+    }
+
+    void Close() override {
+        state_ = game::net::TransportState::Disconnected;
+    }
+
+    [[nodiscard]] bool Send(const game::NetworkEnvelope& envelope) override {
+        if (state_ != game::net::TransportState::Connected) {
+            lastError_ = game::net::TransportError::NotConnected;
+            ++stats_.sendFailures;
+            return false;
+        }
+
+        if (!game::ValidateEnvelope(envelope).Ok()) {
+            lastError_ = game::net::TransportError::ProtocolRejected;
+            ++stats_.sendFailures;
+            return false;
+        }
+
+        lastSentClass_ = envelope.messageClass;
+        ++stats_.envelopesSent;
+        return true;
+    }
+
+    [[nodiscard]] std::optional<game::NetworkEnvelope> Poll() override {
+        return std::nullopt;
+    }
+
+    [[nodiscard]] game::net::TransportState State() const noexcept override {
+        return state_;
+    }
+
+    [[nodiscard]] game::net::TransportStats Stats() const noexcept override {
+        return stats_;
+    }
+
+    [[nodiscard]] game::net::TransportError LastError() const noexcept override {
+        return lastError_;
+    }
+
+    [[nodiscard]] std::size_t Updates() const noexcept {
+        return updates_;
+    }
+
+    [[nodiscard]] std::optional<game::MessageClass> LastSentClass() const noexcept {
+        return lastSentClass_;
+    }
+
+private:
+    game::net::TransportState state_{game::net::TransportState::Disconnected};
+    game::net::TransportStats stats_{};
+    game::net::TransportError lastError_{game::net::TransportError::None};
+    std::size_t updates_{};
+    std::optional<game::MessageClass> lastSentClass_{};
+};
 
 void TestLocalPredictionReconciliation() {
     using namespace game;
@@ -86,6 +156,47 @@ void TestRemoteClientSessionScaffold() {
 
     Expect(session.Stats().snapshotsApplied == 1,
            "remote session applies snapshot via shared pump");
+}
+
+void TestRemoteClientSessionWaitsForAsyncTransportConnection() {
+    auto transport = std::make_unique<AsyncConnectTransport>();
+    const auto* rawTransport = transport.get();
+    game::client::RemoteClientSession session{std::move(transport)};
+    game::client::ClientRuntime runtime{3};
+
+    Expect(runtime.ConnectLocal(0), "async remote session runtime connects locally");
+    Expect(session.Connect(3, 0), "remote session accepts async transport connection start");
+    Expect(session.Stats().connectionState == game::client::ClientConnectionState::Connecting,
+           "remote session stays connecting before transport is connected");
+    Expect(!rawTransport->LastSentClass().has_value(),
+           "remote session does not send login before transport connects");
+
+    session.Pump(runtime);
+    Expect(!rawTransport->LastSentClass().has_value(),
+           "remote session still waits while transport is connecting");
+    session.Tick(16);
+    Expect(rawTransport->LastSentClass() == game::MessageClass::LoginRequest,
+           "remote session sends login once async transport connects");
+    Expect(session.Stats().connectionState == game::client::ClientConnectionState::AwaitingSpawn,
+           "remote session awaits spawn after deferred login is sent");
+}
+
+void TestLocalPreviewClientSessionRunsWithoutServerTransport() {
+    auto session = std::make_unique<game::client::LocalPreviewClientSession>();
+    game::client::ClientApplication app{std::move(session),
+                                        game::client::ClientApplicationConfig{1}};
+    Expect(app.Connect(0), "local preview session connects without server transport");
+
+    game::InputFrame input{};
+    input.moveX = 1;
+    (void)app.SubmitInput(input, 16);
+    app.TickFixed(16);
+
+    const auto stats = app.Stats();
+    Expect(stats.session.connectionState == game::client::ClientConnectionState::LocalPreview,
+           "local preview reports explicit preview connection state");
+    Expect(stats.entityCount == 1, "local preview runs local predicted simulation");
+    Expect(stats.unackedInputCount == 1, "local preview does not fake authoritative acks");
 }
 
 void TestFixedStepClockAndEventLog() {
@@ -173,6 +284,14 @@ TEST(ClientTests, ClientApplicationWithInProcessSession) {
 
 TEST(ClientTests, RemoteClientSessionScaffold) {
     TestRemoteClientSessionScaffold();
+}
+
+TEST(ClientTests, RemoteClientSessionWaitsForAsyncTransportConnection) {
+    TestRemoteClientSessionWaitsForAsyncTransportConnection();
+}
+
+TEST(ClientTests, LocalPreviewClientSessionRunsWithoutServerTransport) {
+    TestLocalPreviewClientSessionRunsWithoutServerTransport();
 }
 
 TEST(ClientTests, FixedStepClockAndEventLog) {

@@ -75,15 +75,13 @@ private:
     void HandleTimeSyncEnvelope(const game::NetworkEnvelope& envelope);
     void BroadcastReliableEvents(const game::EventList& events, game::TimestampMs nowMs);
     void ResendPendingReliableEvents(game::TimestampMs nowMs);
-    void SendInterestEvents(
-        game::ClientId clientId,
-        const game::InterestFrame& interestFrame,
-        game::TimestampMs nowMs);
-    void SendReliableEvent(
-        game::ClientId clientId,
-        const game::NetworkEventDTO& event,
-        game::TimestampMs nowMs,
-        bool isResend = false);
+    void SendInterestEvents(game::ClientId clientId,
+                            const game::InterestFrame& interestFrame,
+                            game::TimestampMs nowMs);
+    void SendReliableEvent(game::ClientId clientId,
+                           const game::NetworkEventDTO& event,
+                           game::TimestampMs nowMs,
+                           bool isResend = false);
     [[nodiscard]] bool ShouldSendSnapshot(game::ClientId clientId, game::TimestampMs nowMs) const;
     void MarkSnapshotSent(game::ClientId clientId, game::TimestampMs nowMs);
     [[nodiscard]] bool SendSnapshot(game::ClientId clientId, game::TimestampMs nowMs);

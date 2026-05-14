@@ -16,6 +16,7 @@ enum class ClientConnectionState : std::uint8_t {
     Connecting,
     AwaitingSpawn,
     Connected,
+    LocalPreview,
 };
 
 struct ClientSessionStats {

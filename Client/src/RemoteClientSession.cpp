@@ -17,27 +17,51 @@ bool RemoteClientSession::Connect(game::ClientId localClientId, game::TimestampM
 
     stats_.localClientId = localClientId;
     stats_.connectionState = ClientConnectionState::Connecting;
+    localClientId_ = localClientId;
+    lastTickTimeMs_ = nowMs;
 
     if (!transport_->Connect()) {
         stats_.connectionState = ClientConnectionState::Disconnected;
         return false;
     }
 
-    localClientId_ = localClientId;
+    sessionActive_ = true;
+    if (transport_->State() != game::net::TransportState::Connected) {
+        return true;
+    }
+
+    return TrySendLogin(nowMs);
+}
+
+bool RemoteClientSession::TrySendLogin(game::TimestampMs nowMs) {
+    if (!transport_ || !sessionActive_) {
+        return false;
+    }
+
+    if (loginSent_) {
+        return true;
+    }
+
+    if (transport_->State() != game::net::TransportState::Connected) {
+        stats_.connectionState = ClientConnectionState::Connecting;
+        return false;
+    }
+
     game::LoginCommand login{};
     login.header.clientId = localClientId_;
     login.header.sequence = 0;
     login.header.clientTimestampMs = nowMs;
 
     ClientProtocolPump pump{*transport_};
-    connected_ = pump.SendLogin(login);
+    loginSent_ = pump.SendLogin(login);
     stats_.connectionState =
-        connected_ ? ClientConnectionState::AwaitingSpawn : ClientConnectionState::Disconnected;
-    return connected_;
+        loginSent_ ? ClientConnectionState::AwaitingSpawn : ClientConnectionState::Disconnected;
+    sessionActive_ = loginSent_;
+    return loginSent_;
 }
 
 void RemoteClientSession::SendInput(const game::ClientInputPacket& packet) {
-    if (!connected_ || !transport_) {
+    if (!sessionActive_ || !loginSent_ || !transport_) {
         return;
     }
 
@@ -48,7 +72,17 @@ void RemoteClientSession::SendInput(const game::ClientInputPacket& packet) {
 void RemoteClientSession::Tick(game::TimestampMs nowMs) {
     lastTickTimeMs_ = nowMs;
 
-    if (!connected_ || !transport_ || nowMs < nextTimeSyncAtMs_) {
+    if (!sessionActive_ || !transport_) {
+        return;
+    }
+
+    transport_->Update();
+    if (!loginSent_) {
+        (void)TrySendLogin(nowMs);
+        return;
+    }
+
+    if (nowMs < nextTimeSyncAtMs_) {
         return;
     }
 
@@ -65,7 +99,13 @@ void RemoteClientSession::Tick(game::TimestampMs nowMs) {
 }
 
 void RemoteClientSession::Pump(ClientRuntime& runtime) {
-    if (!connected_ || !transport_) {
+    if (!sessionActive_ || !transport_) {
+        return;
+    }
+
+    transport_->Update();
+    if (!loginSent_) {
+        (void)TrySendLogin(lastTickTimeMs_);
         return;
     }
 

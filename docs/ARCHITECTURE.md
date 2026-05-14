@@ -55,7 +55,19 @@ All envelopes carry a protocol version and are validated before transport delive
 
 `LoopbackTransport` is the concrete same-process point-to-point implementation for tests and fast iteration. It can optionally apply deterministic packet loss and delayed delivery through `LoopbackNetworkConditions`, giving tests a local way to exercise stale, missing, and out-of-order envelopes without depending on a real network stack. `MultiClientLoopbackTransport` adds peer-addressed routing so multiple `RemoteClientSession`s can share one `ServerNetworkHost` without leaking client routing into gameplay code. `KcpRtcTransport` is the integration seam for KCP over libdatachannel/WebRTC data channels.
 
-`KcpRtcTransport` is intentionally still non-operational until libdatachannel/KCP integration is wired, but it now behaves like a real adapter boundary: valid configuration is distinguished from invalid configuration, protocol envelopes are validated before state checks, disconnected sends report `NotConnected`, and valid `Connect` attempts report `NotImplemented`.
+`KcpRtcTransport` is intentionally not a live network adapter until libdatachannel/KCP integration is wired, but it now behaves like a real async adapter boundary: valid configuration is distinguished from invalid configuration, protocol envelopes are validated before state checks, disconnected sends report `NotConnected`, and valid `Connect` attempts enter signaling rather than pretending a data channel exists.
+
+`CreateRemoteTransport` is the construction boundary for remote transports. Client composition code should ask the factory for a remote transport instead of directly knowing which concrete native/browser adapter is active.
+
+`TransportPacketCodec` is the byte-level data-channel codec. It frames a validated `NetworkEnvelope` into bytes and decodes bytes back into an envelope before gameplay protocol code sees them. Real KCP/WebRTC code should use this codec instead of inventing transport-local packet layouts.
+
+`RtcSignalingMessage` is the signaling DTO for join, offer, answer, ICE candidate, data-channel-ready, leave, and error messages. The transport owns signaling state and queues outgoing signaling messages, while the eventual native/browser signaling client is only responsible for carrying those DTOs to the other peer.
+
+`IRtcSignalingClient` is the signaling transport boundary. `InMemoryRtcSignalingClient` and `InMemoryRtcSignalingHub` provide a native same-process signaling service for tests/tools by routing serialized signaling DTOs by session id and optional target peer id. This is intentionally signaling-only; it does not pretend to be a data channel.
+
+`PumpKcpRtcSignaling` connects the two seams: it drains queued signals from `KcpRtcTransport` into an `IRtcSignalingClient`, then applies incoming signaling messages back to the transport. Real native/browser signaling backends should implement `IRtcSignalingClient` and use the same pump.
+
+`KcpRtcTransport` is now async by shape: `Connect` starts signaling and enters `Connecting`; data-channel readiness moves it to `Connected`; `Send` queues encoded frames; `ReceiveFrame` decodes bytes into pollable envelopes. The missing piece is the real libdatachannel/KCP callback wiring, not the game/session protocol boundary.
 
 `ITransport` exposes lifecycle and diagnostics: `Connect`, `Update`, `Close`, state, last error, and envelope/byte stats. Concrete transports should reject invalid envelopes and report `TransportError` instead of letting protocol problems leak into gameplay code.
 
@@ -64,6 +76,7 @@ Protocol pumping is split away from session/runtime code:
 - `ClientProtocolPump` also sends snapshot/reliable-event acknowledgements and ingests reliable network events and time-sync responses into session/runtime-facing structures.
 - `ServerNetworkHost` owns server-side envelope handling, login/input/snapshot-ack/reliable-event-ack/time-sync processing, network-client snapshot delivery, reliable event broadcasting, and server network stats.
 - `RemoteClientSession` is the scaffold for future real transports and already uses the same client protocol pump as in-process mode.
+- `RemoteClientSession` supports async transport startup and defers login until the transport reports `Connected`, which matches WebRTC-style connection timing.
 
 Server outbound ordering keeps unreliable sequenced snapshots ahead of reliable events generated in the same tick. This preserves snapshot-first reconciliation while still allowing UI/combat feedback to arrive through reliable event messages.
 
@@ -84,6 +97,8 @@ The client layer is split into clear seams:
 Same-process mode is implemented as `InProcessClientSession`, an adapter that wires `ServerNetworkHost` and `LoopbackTransport` through the same serialized protocol path used by real networking. Simulation-only dummy clients can exist inside the server without becoming network clients that receive snapshots. `SimulationOnlyClientDriver` keeps this clean by submitting ordinary sequence-numbered `ClientInputPacket`s to `ServerRuntime` for those opponents. The bridge must not become a second client implementation.
 
 `TwoClientSmoke` is the non-visual real-client workflow check. It composes two `ClientApplication` instances, two `RemoteClientSession`s, `MultiClientLoopbackTransport`, and one `ServerNetworkHost`; it does not bypass protocol pumping or use simulation-only clients.
+
+Browser builds use `browser_main.cpp` and `LocalPreviewClientSession`. This keeps the Raylib/Emscripten build free of `ServerCore`, uses the browser-safe main loop, and allows visual/local-prediction smoke testing while live WebRTC transport remains pending. It does not create authoritative combat or fake snapshot ACKs.
 
 ## Server Shell
 `ServerApplication` is the headless server shell. It owns transport lifecycle, constructs `ServerNetworkHost`, advances fixed server ticks, exposes server stats, and supports graceful shutdown through `RequestStop`. The `Server` executable should stay a composition entrypoint around this shell rather than talking directly to `ServerRuntime`.

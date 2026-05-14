@@ -23,4 +23,5 @@ gtest_discover_tests(ScaffoldTests)
 
 if(TARGET TwoClientSmoke)
     add_test(NAME Smoke.TwoClient COMMAND TwoClientSmoke)
+    add_test(NAME Smoke.MinimalPlayable COMMAND TwoClientSmoke)
 endif()

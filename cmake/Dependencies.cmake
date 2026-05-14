@@ -75,6 +75,12 @@ endif()
 if(SCAFFOLD_BUILD_CLIENT)
     find_package(raylib QUIET)
     if(NOT TARGET raylib AND SCAFFOLD_FETCH_DEPS AND SCAFFOLD_FETCH_RAYLIB)
+        if(EMSCRIPTEN)
+            set(PLATFORM Web CACHE STRING "raylib target platform" FORCE)
+            set(USE_EXTERNAL_GLFW OFF CACHE STRING "Use embedded GLFW for raylib" FORCE)
+            set(GLFW_BUILD_X11 ON CACHE BOOL "Keep raylib's top-level GLFW/X11 check satisfied for web builds" FORCE)
+        endif()
+
         FetchContent_Declare(
             raylib
             GIT_REPOSITORY https://github.com/raysan5/raylib.git

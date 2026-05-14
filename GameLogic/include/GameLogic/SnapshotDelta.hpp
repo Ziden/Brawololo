@@ -32,8 +32,7 @@ struct SnapshotDeltaPlan {
 };
 
 [[nodiscard]] bool EquivalentEntityState(const EntityStateDTO& left, const EntityStateDTO& right);
-[[nodiscard]] SnapshotDeltaPlan PlanSnapshotDelta(
-    const SnapshotDTO& current,
-    const SnapshotDTO& baseline);
+[[nodiscard]] SnapshotDeltaPlan PlanSnapshotDelta(const SnapshotDTO& current,
+                                                  const SnapshotDTO& baseline);
 
 } // namespace game

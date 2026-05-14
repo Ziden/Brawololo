@@ -17,7 +17,8 @@ public:
 
     static std::shared_ptr<Hub> CreateHub();
     static MultiClientLoopbackTransport CreateServer(std::shared_ptr<Hub> hub);
-    static MultiClientLoopbackTransport CreateClient(std::shared_ptr<Hub> hub, game::ClientId clientId);
+    static MultiClientLoopbackTransport CreateClient(std::shared_ptr<Hub> hub,
+                                                     game::ClientId clientId);
 
     MultiClientLoopbackTransport() = default;
 
@@ -36,7 +37,9 @@ private:
         Client,
     };
 
-    MultiClientLoopbackTransport(std::shared_ptr<Hub> hub, Endpoint endpoint, game::ClientId clientId = 0);
+    MultiClientLoopbackTransport(std::shared_ptr<Hub> hub,
+                                 Endpoint endpoint,
+                                 game::ClientId clientId = 0);
 
     std::shared_ptr<Hub> hub_{};
     Endpoint endpoint_{Endpoint::Server};

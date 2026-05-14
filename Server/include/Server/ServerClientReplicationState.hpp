@@ -73,10 +73,10 @@ public:
         return pendingReliableEvents_.size();
     }
 
-    [[nodiscard]] std::vector<game::NetworkEventDTO> ReliableEventsDueForResend(
-        game::TimestampMs nowMs,
-        game::TimestampMs baseIntervalMs,
-        std::uint32_t maxSendCount) const {
+    [[nodiscard]] std::vector<game::NetworkEventDTO>
+    ReliableEventsDueForResend(game::TimestampMs nowMs,
+                               game::TimestampMs baseIntervalMs,
+                               std::uint32_t maxSendCount) const {
         std::vector<game::NetworkEventDTO> due{};
         for (const auto& [eventId, pending] : pendingReliableEvents_) {
             (void)eventId;
@@ -84,9 +84,8 @@ public:
                 continue;
             }
 
-            const auto backoffShift = std::min<std::uint32_t>(
-                pending.sendCount > 0 ? pending.sendCount - 1 : 0,
-                4);
+            const auto backoffShift =
+                std::min<std::uint32_t>(pending.sendCount > 0 ? pending.sendCount - 1 : 0, 4);
             const auto resendDelayMs = baseIntervalMs << backoffShift;
             if (nowMs >= pending.lastSentAtMs + resendDelayMs) {
                 due.push_back(pending.event);

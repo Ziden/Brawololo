@@ -175,10 +175,8 @@ void DrawEffect(const ViewEffect& effect) {
                             static_cast<int>(position.y),
                             radius,
                             Color{255, 222, 112, alpha});
-            DrawLineEx(position,
-                       {position.x + 44.0F, position.y},
-                       3.0F,
-                       Color{255, 222, 112, alpha});
+            DrawLineEx(
+                position, {position.x + 44.0F, position.y}, 3.0F, Color{255, 222, 112, alpha});
             break;
         }
         case ViewEffectKind::AuthoritativeHit: {
@@ -222,12 +220,10 @@ void DrawEffect(const ViewEffect& effect) {
         }
         case ViewEffectKind::PredictionCorrection: {
             const auto radius = 16.0F + (progress * 22.0F);
-            DrawRectangleLinesEx(Rectangle{position.x - radius,
-                                           position.y - radius,
-                                           radius * 2.0F,
-                                           radius * 2.0F},
-                                 2.0F,
-                                 Color{83, 209, 255, alpha});
+            DrawRectangleLinesEx(
+                Rectangle{position.x - radius, position.y - radius, radius * 2.0F, radius * 2.0F},
+                2.0F,
+                Color{83, 209, 255, alpha});
             break;
         }
     }

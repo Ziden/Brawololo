@@ -26,11 +26,10 @@ public:
 
 private:
     void Push(ViewEffect effect, float lifetimeSeconds);
-    [[nodiscard]] std::optional<ViewEffect> EffectAtEntity(
-        ViewEffectKind kind,
-        game::NetworkEntityId entityId,
-        const ClientRuntime& runtime,
-        std::int32_t amount = 0) const;
+    [[nodiscard]] std::optional<ViewEffect> EffectAtEntity(ViewEffectKind kind,
+                                                           game::NetworkEntityId entityId,
+                                                           const ClientRuntime& runtime,
+                                                           std::int32_t amount = 0) const;
 
     std::size_t maxEntries_{};
     std::vector<ClientVisualEffectLogEntry> entries_{};
